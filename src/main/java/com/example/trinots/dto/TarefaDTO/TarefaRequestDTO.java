@@ -1,0 +1,29 @@
+package com.example.trinots.dto.TarefaDTO;
+
+import com.example.trinots.domain.enums.TipoTarefaEnum;
+import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.time.LocalDate;
+import java.util.UUID;
+
+public record TarefaRequestDTO(
+        @NotBlank(message = "Nome da tarefa é obrigatório")
+        @Size(min = 2, max = 150, message = "Nome da tarefa deve ter entre 2 e 150 caracteres")
+        String nomeTarefa,
+
+        @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
+        String descricao,
+
+        @NotNull(message = "Tipo de tarefa é obrigatório")
+        TipoTarefaEnum tipoTarefa,
+
+        @NotNull(message = "Data de entrega é obrigatória")
+        @FutureOrPresent(message = "Data de entrega não pode ser no passado")
+        LocalDate dataEntrega,
+
+        @NotNull(message = "Disciplina é obrigatória")
+        UUID idDisciplina
+) {}

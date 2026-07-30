@@ -1,0 +1,37 @@
+package com.example.trinots.dto.UsuarioDTO;
+
+import jakarta.validation.constraints.*;
+
+import java.time.LocalDate;
+import java.util.UUID;
+
+public record UsuarioRequestDTO (
+    @NotBlank(message = "Nome é obrigatório")
+    @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
+    String nome,
+
+    @NotBlank(message = "Sobrenome é obrigatório")
+    @Size(min = 2, max = 100, message = "Sobrenome deve ter entre 2 e 100 caracteres")
+    String sobrenome,
+
+    @NotBlank(message = "Email é obrigatório")
+    @Email(message = "Email inválido")
+    @Size(max = 150, message = "Email deve ter no máximo 150 caracteres")
+    String email,
+
+    @NotBlank(message = "Senha é obrigatória")
+    @Size(min = 6, max = 32, message = "Senha deve ter entre 6 e 32 caracteres")
+    String senha,
+
+    @NotNull(message = "Curso é obrigatório")
+    UUID idCurso,
+
+    @NotNull(message = "Semestre é obrigatório")
+    @Min(value = 1, message = "Semestre deve ser no mínimo 1")
+    @Max(value = 20, message = "Semestre deve ser no máximo 20")
+    Integer semestreAtual,
+
+    @NotNull(message = "Data de nascimento é obrigatória")
+    @Past(message = "Data de nascimento deve ser no passado")
+    LocalDate dataNascimento
+){}
