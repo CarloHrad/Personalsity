@@ -27,6 +27,6 @@ public class Horario {
     private LocalTime horaFim;
 
     @ManyToOne
-    @JoinColumn(name = "idDisciplina")
+    @JoinColumn(name = "id_disciplina")
     private Disciplina disciplina;
 }

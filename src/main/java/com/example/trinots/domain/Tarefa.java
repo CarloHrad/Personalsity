@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -26,14 +27,14 @@ public class Tarefa {
     @Enumerated(EnumType.STRING)
     private TipoTarefaEnum tipoTarefa;
 
-    private LocalDate dataEntrega;
+    private LocalDate dataTarefa;
 
-    private LocalDate dataConclusao;
+    private LocalDateTime dataConclusao;
 
     private Boolean concluida = false;
 
     @ManyToOne
-    @JoinColumn(name = "idDisciplina")
+    @JoinColumn(name = "id_disciplina")
     private Disciplina disciplina;
 
 }

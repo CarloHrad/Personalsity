@@ -38,15 +38,18 @@ public class UsuarioService {
                 throw new EmailJaCadastradoException("Email já cadastrado");
             }
 
-            Curso curso = cursoRepository.findById(dto.idCurso())
-                    .orElseThrow(() -> new EntityNotFoundException("Curso não encontrado"));
+            Curso curso = new Curso();
+            curso.setNomeCurso(dto.curso().nomeCurso());
+            curso.setInstituicao(dto.curso().instituicao());
+            curso.setDuracao(dto.curso().duracao());
+            Curso cursoSalvo = cursoRepository.save(curso);
 
             Usuario usuario = new Usuario();
             usuario.setNome(dto.nome());
             usuario.setSobrenome(dto.sobrenome());
             usuario.setEmail(dto.email());
             usuario.setSenha(passwordEncoder.encode(dto.senha()));
-            usuario.setCurso(curso);
+            usuario.setCurso(cursoSalvo);
             usuario.setSemestreAtual(dto.semestreAtual());
             usuario.setDataNascimento(dto.dataNascimento());
 

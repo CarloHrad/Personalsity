@@ -1,8 +1,6 @@
 package com.example.trinots.dto.AuthDTO;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 

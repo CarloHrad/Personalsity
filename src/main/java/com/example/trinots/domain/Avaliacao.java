@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -27,7 +28,9 @@ public class Avaliacao {
     @Enumerated(EnumType.STRING)
     private TipoAvaliacaoEnum tipoAvaliacao;
 
-    private LocalDate data;
+    private LocalDate dataAvaliacao;
+
+    private LocalDateTime dataConclusao;
 
     private Double notaObtida;
 
@@ -38,7 +41,7 @@ public class Avaliacao {
     private Boolean concluida = false;
 
     @ManyToOne
-    @JoinColumn(name = "idDisciplina")
+    @JoinColumn(name = "id_disciplina")
     private Disciplina disciplina;
 
 }

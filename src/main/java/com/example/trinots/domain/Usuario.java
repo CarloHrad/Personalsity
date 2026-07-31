@@ -28,7 +28,7 @@ public class Usuario {
     private String senha;
 
     @ManyToOne
-    @JoinColumn(name = "idUsuario")
+    @JoinColumn(name = "id_curso")
     private Curso curso;
 
     private Integer semestreAtual;

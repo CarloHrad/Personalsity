@@ -43,7 +43,7 @@ public class Disciplina {
     private TipoMediaEnum tipoMedia;
 
     @ManyToOne
-    @JoinColumn(name = "idUsuario")
+    @JoinColumn(name = "id_usuario")
     private Usuario usuario;
 
     private Boolean arquivada = false;

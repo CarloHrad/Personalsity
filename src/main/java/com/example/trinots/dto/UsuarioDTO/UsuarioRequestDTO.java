@@ -1,5 +1,7 @@
 package com.example.trinots.dto.UsuarioDTO;
 
+import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -8,10 +10,12 @@ import java.util.UUID;
 public record UsuarioRequestDTO (
     @NotBlank(message = "Nome é obrigatório")
     @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
+    @Pattern(regexp = "^[A-Za-zÀ-ÖØ-öø-ÿ'\\- ]+$", message = "Nome deve conter apenas letras")
     String nome,
 
     @NotBlank(message = "Sobrenome é obrigatório")
     @Size(min = 2, max = 100, message = "Sobrenome deve ter entre 2 e 100 caracteres")
+    @Pattern(regexp = "^[A-Za-zÀ-ÖØ-öø-ÿ'\\- ]+$", message = "Sobrenome deve conter apenas letras")
     String sobrenome,
 
     @NotBlank(message = "Email é obrigatório")
@@ -24,7 +28,8 @@ public record UsuarioRequestDTO (
     String senha,
 
     @NotNull(message = "Curso é obrigatório")
-    UUID idCurso,
+    @Valid
+    CursoRequestDTO curso,
 
     @NotNull(message = "Semestre é obrigatório")
     @Min(value = 1, message = "Semestre deve ser no mínimo 1")
