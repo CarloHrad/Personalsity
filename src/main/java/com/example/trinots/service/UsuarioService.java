@@ -4,6 +4,7 @@ package com.example.trinots.service;
 import com.example.trinots.domain.Curso;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
+import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
 import com.example.trinots.dto.CursoDTO.CursoResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
@@ -68,11 +69,33 @@ public class UsuarioService {
         return toResponseDTO(atualizado);
     }
 
+    public CursoResponseDTO atualizarCurso(UUID id, CursoRequestDTO dto) {
+        Usuario usuario = buscarEntidadePorId(id);
+        Curso curso = buscarCursoPorId(usuario.getCurso().getIdCurso());
+
+        curso.setNomeCurso(dto.nomeCurso());
+        curso.setInstituicao(dto.instituicao());
+        curso.setDuracao(dto.duracao());
+
+        cursoRepository.save(curso);
+
+        return new CursoResponseDTO(
+                usuario.getCurso().getIdCurso(),
+                usuario.getCurso().getNomeCurso(),
+                usuario.getCurso().getInstituicao(),
+                usuario.getCurso().getDuracao()
+        );
+    }
+
     public void trocarSenha(UUID id, TrocarSenhaDTO dto) {
         Usuario usuario = buscarEntidadePorId(id);
 
         if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenha())) {
             throw new CredenciaisInvalidasException("Senha atual incorreta");
+        }
+
+        if (!dto.novaSenha().matches(dto.novaSenhaConfirmada())) {
+            throw new CredenciaisInvalidasException("Novas senhas diferentes");
         }
 
         usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
@@ -88,6 +111,10 @@ public class UsuarioService {
 
     private Usuario buscarEntidadePorId(UUID id) {
         return usuarioRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+    }
+
+    private Curso buscarCursoPorId(UUID id) {
+        return cursoRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Curso não encontrado"));
     }
 
     public void desativarUsuario(UUID id) {

@@ -235,7 +235,7 @@ class UsuarioServiceTest {
         @Test
         @DisplayName("deve trocar senha com sucesso quando senha atual está correta")
         void deveTrocarSenhaComSucesso() {
-            TrocarSenhaDTO dto = new TrocarSenhaDTO("senhaAtual123", "novaSenha456");
+            TrocarSenhaDTO dto = new TrocarSenhaDTO("senhaAtual123", "novaSenha456", "novaSenha456");
             when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
             when(passwordEncoder.matches("senhaAtual123", "senhaHasheada")).thenReturn(true);
             when(passwordEncoder.encode("novaSenha456")).thenReturn("novaHash");
@@ -249,7 +249,7 @@ class UsuarioServiceTest {
         @Test
         @DisplayName("deve lançar CredenciaisInvalidasException quando senha atual está incorreta")
         void deveLancarExceptionQuandoSenhaAtualIncorreta() {
-            TrocarSenhaDTO dto = new TrocarSenhaDTO("senhaErrada", "novaSenha456");
+            TrocarSenhaDTO dto = new TrocarSenhaDTO("senhaErrada", "novaSenha456", "novaSenha456");
             when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
             when(passwordEncoder.matches("senhaErrada", "senhaHasheada")).thenReturn(false);
 
@@ -264,7 +264,7 @@ class UsuarioServiceTest {
         @DisplayName("deve lançar EntityNotFoundException quando usuário não existe")
         void deveLancarExceptionQuandoUsuarioNaoExiste() {
             UUID idInexistente = UUID.randomUUID();
-            TrocarSenhaDTO dto = new TrocarSenhaDTO("qualquer", "novaSenha456");
+            TrocarSenhaDTO dto = new TrocarSenhaDTO("qualquer", "novaSenha456", "novaSenha456");
             when(usuarioRepository.findById(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> usuarioService.trocarSenha(idInexistente, dto))

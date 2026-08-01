@@ -9,5 +9,9 @@ public record TrocarSenhaDTO(
 
         @NotBlank(message = "Nova senha é obrigatória")
         @Size(min = 4, max = 32, message = "Nova senha deve ter entre 4 e 32 caracteres")
-        String novaSenha
+        String novaSenha,
+
+        @NotBlank(message = "Nova senha é obrigatória")
+        @Size(min = 4, max = 32, message = "Nova senha deve ter entre 4 e 32 caracteres")
+        String novaSenhaConfirmada
 ) {}
