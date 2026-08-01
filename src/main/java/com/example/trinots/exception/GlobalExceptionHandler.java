@@ -67,4 +67,5 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponseDTO("400", "JSON malformado ou ilegível", LocalDateTime.now()));
     }
+
 }

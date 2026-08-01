@@ -3,6 +3,7 @@ package com.example.trinots.dto.AvaliacaoDTO;
 import com.example.trinots.domain.enums.TipoAvaliacaoEnum;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record AvaliacaoResponseDTO(
@@ -10,7 +11,8 @@ public record AvaliacaoResponseDTO(
         String nomeAvaliacao,
         String descricao,
         TipoAvaliacaoEnum tipoAvaliacao,
-        LocalDate data,
+        LocalDate dataAvaliacao,
+        LocalDateTime dataConclusao,
         Double notaObtida,
         Double notaMaxima,
         Double peso,

@@ -20,7 +20,7 @@ public class TokenRecuperacaoSenha {
     private UUID idToken;
 
     @ManyToOne
-    @JoinColumn(name = "idUsuario")
+    @JoinColumn(name = "id_usuario")
     private Usuario usuario;
 
     private String token;

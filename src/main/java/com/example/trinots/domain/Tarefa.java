@@ -27,8 +27,9 @@ public class Tarefa {
     @Enumerated(EnumType.STRING)
     private TipoTarefaEnum tipoTarefa;
 
-    private LocalDate dataTarefa;
+    private LocalDate dataEntrega;
 
+    @Column(name = "data_conclusao")
     private LocalDateTime dataConclusao;
 
     private Boolean concluida = false;

@@ -8,10 +8,7 @@ import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioResponseDTO;
-import com.example.trinots.exception.exceptions.DisciplinaArquivadaException;
-import com.example.trinots.exception.exceptions.DisciplinaComDadosVinculadosException;
-import com.example.trinots.exception.exceptions.DisciplinaJaCadastradaException;
-import com.example.trinots.exception.exceptions.EmailJaCadastradoException;
+import com.example.trinots.exception.exceptions.*;
 import com.example.trinots.repository.AvaliacaoRepository;
 import com.example.trinots.repository.DisciplinaRepository;
 import com.example.trinots.repository.HorarioRepository;
@@ -22,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -84,13 +82,23 @@ public class DisciplinaService {
             throw new DisciplinaArquivadaException("Não é possível editar uma disciplina arquivada");
         }
 
+        boolean temAvaliacoes = !avaliacaoRepository.findByDisciplinaIdDisciplina(id).isEmpty();
+
+        if (temAvaliacoes && !Objects.equals(disciplina.getTipoMedia(), dto.tipoMedia())) {
+            throw new TipoMediaImutavelException(
+                    "Não é possível alterar o tipo de média: a disciplina já possui avaliações cadastradas");
+        }
+
         disciplina.setNomeDisciplina(dto.nomeDisciplina());
         disciplina.setPeriodo(dto.periodo());
         disciplina.setProfessor(dto.professor());
         disciplina.setSala(dto.sala());
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
-        disciplina.setTipoMedia(dto.tipoMedia());
+
+        if (!temAvaliacoes) {
+            disciplina.setTipoMedia(dto.tipoMedia());
+        }
 
         Disciplina atualizada = disciplinaRepository.save(disciplina);
         return toResponseDTO(atualizada);

@@ -20,7 +20,7 @@ public record TarefaRequestDTO(
         @NotNull(message = "Tipo de tarefa é obrigatório")
         TipoTarefaEnum tipoTarefa,
 
-        @NotNull(message = "Data de entrega é obrigatória")
+        @NotNull(message = "Data de entrega é obrigatória") //faz sentido deixar opcional?
         @FutureOrPresent(message = "Data de entrega não pode ser no passado")
         LocalDate dataEntrega,
 

@@ -17,18 +17,17 @@ public record AvaliacaoRequestDTO(
         @NotNull(message = "Tipo de avaliação é obrigatório")
         TipoAvaliacaoEnum tipoAvaliacao,
 
-        @NotNull(message = "Data é obrigatória")
-        LocalDate data,
+        @NotNull(message = "Data da avaliação é obrigatória")
+        LocalDate dataAvaliacao,
 
         @NotNull(message = "Nota máxima é obrigatória")
         @Positive(message = "Nota máxima deve ser maior que zero")
         @DecimalMax(value = "1000.0", message = "Nota máxima deve ser no máximo 1000")
         Double notaMaxima,
 
-        @NotNull(message = "Peso é obrigatório")
         @Positive(message = "Peso deve ser maior que zero")
         @DecimalMax(value = "100.0", message = "Peso deve ser no máximo 100")
-        Double peso,
+        Double peso, // opcional — obrigatoriedade validada no service conforme tipoMedia
 
         @NotNull(message = "Disciplina é obrigatória")
         UUID idDisciplina
