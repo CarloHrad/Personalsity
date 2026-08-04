@@ -1,6 +1,5 @@
 package com.example.trinots.dto.TarefaDTO;
 
-import com.example.trinots.domain.enums.TipoTarefaEnum;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,9 +15,6 @@ public record TarefaRequestDTO(
 
         @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
         String descricao,
-
-        @NotNull(message = "Tipo de tarefa é obrigatório")
-        TipoTarefaEnum tipoTarefa,
 
         @NotNull(message = "Data de entrega é obrigatória") //faz sentido deixar opcional?
         @FutureOrPresent(message = "Data de entrega não pode ser no passado")

@@ -33,7 +33,5 @@ public class Usuario {
 
     private Integer semestreAtual;
 
-    private LocalDate dataNascimento;
-
     private boolean ativo = true;
 }

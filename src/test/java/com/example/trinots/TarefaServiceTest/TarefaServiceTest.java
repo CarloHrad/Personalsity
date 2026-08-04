@@ -1,7 +1,6 @@
 package com.example.trinots.TarefaServiceTest;
 
 import com.example.trinots.domain.*;
-import com.example.trinots.domain.enums.TipoTarefaEnum;
 import com.example.trinots.dto.TarefaDTO.TarefaRequestDTO;
 import com.example.trinots.dto.TarefaDTO.TarefaResponseDTO;
 import com.example.trinots.exception.exceptions.*;
@@ -58,7 +57,6 @@ class TarefaServiceTest {
         tarefaExistente = new Tarefa();
         tarefaExistente.setIdTarefa(idTarefa);
         tarefaExistente.setNomeTarefa("Lista 1");
-        tarefaExistente.setTipoTarefa(TipoTarefaEnum.LISTA_EXERCICIOS);
         tarefaExistente.setDataEntrega(LocalDate.now().plusDays(5));
         tarefaExistente.setConcluida(false);
         tarefaExistente.setDataConclusao(null);
@@ -67,7 +65,7 @@ class TarefaServiceTest {
 
     private TarefaRequestDTO criarDtoValido() {
         return new TarefaRequestDTO("Lista 1", "Exercícios do capítulo 3",
-                TipoTarefaEnum.LISTA_EXERCICIOS, LocalDate.now().plusDays(5), idDisciplina);
+                LocalDate.now().plusDays(5), idDisciplina);
     }
 
     @Nested
@@ -225,7 +223,7 @@ class TarefaServiceTest {
         @DisplayName("deve atualizar tarefa com sucesso quando não está concluída nem a disciplina arquivada")
         void deveAtualizarComSucesso() {
             TarefaRequestDTO dto = new TarefaRequestDTO("Lista 2", "Nova descrição",
-                    TipoTarefaEnum.ESTUDO, LocalDate.now().plusDays(10), idDisciplina);
+                    LocalDate.now().plusDays(10), idDisciplina);
 
             when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
                     .thenReturn(Optional.of(tarefaExistente));
@@ -236,7 +234,6 @@ class TarefaServiceTest {
             TarefaResponseDTO resultado = tarefaService.atualizarTarefa(idTarefa, dto, idUsuarioLogado);
 
             assertThat(resultado.nomeTarefa()).isEqualTo("Lista 2");
-            assertThat(resultado.tipoTarefa()).isEqualTo(TipoTarefaEnum.ESTUDO);
         }
 
         @Test

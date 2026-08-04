@@ -48,21 +48,31 @@ public class AvaliacaoService {
             throw new TipoMediaIndefinidaException("Defina o tipo de média da disciplina antes de cadastrar avaliações");
         }
 
+        if (dto.notaObtida() != null && dto.notaObtida() > dto.notaMaxima()) {
+            throw new NotaInvalidaException(
+                    "Nota obtida não pode ser maior que a nota máxima (" + dto.notaMaxima() + ")");
+        }
+
         Double peso = resolverPeso(disciplina, dto.peso());
+        boolean jaConcluida = dto.notaObtida() != null;
 
         Avaliacao avaliacao = new Avaliacao();
         avaliacao.setNomeAvaliacao(dto.nomeAvaliacao());
         avaliacao.setDescricao(dto.descricao());
-        avaliacao.setTipoAvaliacao(dto.tipoAvaliacao());
         avaliacao.setDataAvaliacao(dto.dataAvaliacao());
         avaliacao.setNotaMaxima(dto.notaMaxima());
         avaliacao.setPeso(peso);
-        avaliacao.setConcluida(false);
-        avaliacao.setNotaObtida(null);
-        avaliacao.setDataConclusao(null);
+        avaliacao.setNotaObtida(dto.notaObtida());
+        avaliacao.setConcluida(jaConcluida);
+        avaliacao.setDataConclusao(jaConcluida ? LocalDateTime.now() : null);
         avaliacao.setDisciplina(disciplina);
 
         Avaliacao salva = avaliacaoRepository.save(avaliacao);
+
+        if (jaConcluida) {
+            disciplinaService.atualizarStatusDisciplina(disciplina.getIdDisciplina(), idUsuarioLogado);
+        }
+
         return toResponseDTO(salva);
     }
 
@@ -91,14 +101,14 @@ public class AvaliacaoService {
 
         if (avaliacao.getConcluida()) {
             boolean tentandoAlterarCampoTravado =
-                    avaliacao.getTipoAvaliacao() != dto.tipoAvaliacao() ||
-                            !avaliacao.getNotaMaxima().equals(dto.notaMaxima()) ||
+                    !avaliacao.getNotaMaxima().equals(dto.notaMaxima()) ||
                             !Objects.equals(avaliacao.getPeso(), dto.peso()) ||
+                            !Objects.equals(avaliacao.getNotaObtida(), dto.notaObtida()) ||
                             !avaliacao.getDisciplina().getIdDisciplina().equals(dto.idDisciplina());
 
             if (tentandoAlterarCampoTravado) {
                 throw new AvaliacaoJaConcluidaException(
-                        "Avaliação já concluída: só é possível editar nome e descrição");
+                        "Avaliação já concluída: só é possível editar nome e descrição. Para alterar a nota, use reabrir + concluir novamente.");
             }
 
             avaliacao.setNomeAvaliacao(dto.nomeAvaliacao());
@@ -108,11 +118,15 @@ public class AvaliacaoService {
             return toResponseDTO(avaliacaoRepository.save(avaliacao));
         }
 
+        if (dto.notaObtida() != null) {
+            throw new NotaInvalidaException(
+                    "Não é possível definir a nota por aqui. Use o endpoint de concluir avaliação.");
+        }
+
         Double peso = resolverPeso(disciplina, dto.peso());
 
         avaliacao.setNomeAvaliacao(dto.nomeAvaliacao());
         avaliacao.setDescricao(dto.descricao());
-        avaliacao.setTipoAvaliacao(dto.tipoAvaliacao());
         avaliacao.setDataAvaliacao(dto.dataAvaliacao());
         avaliacao.setNotaMaxima(dto.notaMaxima());
         avaliacao.setPeso(peso);
@@ -203,7 +217,6 @@ public class AvaliacaoService {
                 avaliacao.getIdAvaliacao(),
                 avaliacao.getNomeAvaliacao(),
                 avaliacao.getDescricao(),
-                avaliacao.getTipoAvaliacao(),
                 avaliacao.getDataAvaliacao(),
                 avaliacao.getDataConclusao(),
                 avaliacao.getNotaObtida(),

@@ -52,7 +52,6 @@ public class UsuarioService {
             usuario.setSenha(passwordEncoder.encode(dto.senha()));
             usuario.setCurso(cursoSalvo);
             usuario.setSemestreAtual(dto.semestreAtual());
-            usuario.setDataNascimento(dto.dataNascimento());
 
             Usuario salvo = usuarioRepository.save(usuario);
             return toResponseDTO(salvo);
@@ -139,7 +138,6 @@ public class UsuarioService {
                 usuario.getEmail(),
                 cursoDTO,
                 usuario.getSemestreAtual(),
-                usuario.getDataNascimento(),
                 usuario.isAtivo()
         );
     }

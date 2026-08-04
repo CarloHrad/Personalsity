@@ -1,6 +1,5 @@
 package com.example.trinots.dto.AvaliacaoDTO;
 
-import com.example.trinots.domain.enums.TipoAvaliacaoEnum;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -14,11 +13,11 @@ public record AvaliacaoRequestDTO(
         @Size(max = 500, message = "Descrição deve ter no máximo 500 caracteres")
         String descricao,
 
-        @NotNull(message = "Tipo de avaliação é obrigatório")
-        TipoAvaliacaoEnum tipoAvaliacao,
-
         @NotNull(message = "Data da avaliação é obrigatória")
         LocalDate dataAvaliacao,
+
+        @PositiveOrZero(message = "Nota obtida não pode ser negativa")
+        Double notaObtida,
 
         @NotNull(message = "Nota máxima é obrigatória")
         @Positive(message = "Nota máxima deve ser maior que zero")

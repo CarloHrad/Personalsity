@@ -2,7 +2,11 @@ package com.example.trinots.dto.DisciplinaDTO;
 
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.domain.enums.TipoMediaEnum;
+import com.example.trinots.dto.HorarioDTO.HorarioEmbutidoDTO;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
+
+import java.util.List;
 
 public record DisciplinaRequestDTO(
         @NotBlank(message = "Nome da disciplina é obrigatório")
@@ -27,5 +31,8 @@ public record DisciplinaRequestDTO(
         @Pattern(regexp = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$", message = "Cor deve estar em formato hexadecimal (ex: #FF5733)")
         String cor,
 
-        TipoMediaEnum tipoMedia
+        TipoMediaEnum tipoMedia,
+
+        @Valid
+        List<HorarioEmbutidoDTO> horarios
 ) {}

@@ -34,9 +34,5 @@ public record UsuarioRequestDTO (
     @NotNull(message = "Semestre é obrigatório")
     @Min(value = 1, message = "Semestre deve ser no mínimo 1")
     @Max(value = 20, message = "Semestre deve ser no máximo 20")
-    Integer semestreAtual,
-
-    @NotNull(message = "Data de nascimento é obrigatória")
-    @Past(message = "Data de nascimento deve ser no passado")
-    LocalDate dataNascimento
+    Integer semestreAtual
 ){}

@@ -10,6 +10,6 @@ import java.util.UUID;
 
 public interface HorarioRepository extends JpaRepository<Horario, UUID> {
     List<Horario> findByDisciplinaIdDisciplina(UUID idDisciplina);
-    List<Horario> findByDisciplinaUsuarioIdUsuarioAndDiaSemana(UUID idUsuario, DiaSemanaEnum diaSemana);
+    List<Horario> findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(UUID idUsuario, DiaSemanaEnum diaSemana);
     Optional<Horario> findByIdHoraAndDisciplinaUsuarioIdUsuario(UUID idHora, UUID idUsuario);
 }

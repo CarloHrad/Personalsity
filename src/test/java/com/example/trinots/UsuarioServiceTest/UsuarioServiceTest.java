@@ -66,7 +66,6 @@ class UsuarioServiceTest {
         usuarioExistente.setSenha("senhaHasheada");
         usuarioExistente.setCurso(curso);
         usuarioExistente.setSemestreAtual(3);
-        usuarioExistente.setDataNascimento(LocalDate.of(2000, 5, 10));
         usuarioExistente.setAtivo(true);
     }
 
@@ -74,7 +73,7 @@ class UsuarioServiceTest {
         CursoRequestDTO cursoDto = new CursoRequestDTO("ADS", "Faculdade XYZ", 6);
         return new UsuarioRequestDTO(
                 "João", "Silva", "joao@email.com", "senha123",
-                cursoDto, 3, LocalDate.of(2000, 5, 10)
+                cursoDto, 3
         );
     }
 

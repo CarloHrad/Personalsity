@@ -1,6 +1,5 @@
 package com.example.trinots.domain;
 
-import com.example.trinots.domain.enums.TipoTarefaEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,9 +22,6 @@ public class Tarefa {
     private String nomeTarefa;
 
     private String descricao;
-
-    @Enumerated(EnumType.STRING)
-    private TipoTarefaEnum tipoTarefa;
 
     private LocalDate dataEntrega;
 

@@ -95,10 +95,10 @@ public class HorarioService {
     private void validarSemConflito(DiaSemanaEnum diaSemana, LocalTime horaInicio, LocalTime horaFim,
                                     UUID idUsuarioLogado, UUID idHorarioIgnorar) {
         List<Horario> horariosDoMesmoDia = horarioRepository
-                .findByDisciplinaUsuarioIdUsuarioAndDiaSemana(idUsuarioLogado, diaSemana);
+                .findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, diaSemana);
 
         boolean temConflito = horariosDoMesmoDia.stream()
-                .filter(h -> !h.getIdHora().equals(idHorarioIgnorar)) // ignora ele mesmo, em caso de update
+                .filter(h -> !h.getIdHora().equals(idHorarioIgnorar))
                 .anyMatch(h -> horaInicio.isBefore(h.getHoraFim()) && horaFim.isAfter(h.getHoraInicio()));
 
         if (temConflito) {

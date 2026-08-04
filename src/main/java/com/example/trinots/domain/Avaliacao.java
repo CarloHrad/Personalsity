@@ -1,7 +1,5 @@
 package com.example.trinots.domain;
 
-import com.example.trinots.domain.enums.TipoAvaliacaoEnum;
-import com.example.trinots.domain.enums.TipoTarefaEnum;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,9 +22,6 @@ public class Avaliacao {
     private String nomeAvaliacao;
 
     private String descricao;
-
-    @Enumerated(EnumType.STRING)
-    private TipoAvaliacaoEnum tipoAvaliacao;
 
     private LocalDate dataAvaliacao;
 

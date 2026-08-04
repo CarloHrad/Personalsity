@@ -7,6 +7,8 @@ import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
+import com.example.trinots.dto.HorarioDTO.HorarioEmbutidoDTO;
+import com.example.trinots.dto.HorarioDTO.HorarioRequestDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioResponseDTO;
 import com.example.trinots.exception.exceptions.*;
 import com.example.trinots.repository.AvaliacaoRepository;
@@ -31,14 +33,16 @@ public class DisciplinaService {
     private final HorarioRepository horarioRepository;
     private final AvaliacaoRepository avaliacaoRepository;
     private final TarefaRepository tarefaRepository;
+    private final HorarioService horarioService;
 
     private static final double MEDIA_MINIMA_APROVACAO = 6.0;
 
-    public DisciplinaService(DisciplinaRepository disciplinaRepository, AvaliacaoRepository avaliacaoRepository, HorarioRepository horarioRepository, TarefaRepository tarefaRepository) {
+    public DisciplinaService(DisciplinaRepository disciplinaRepository, AvaliacaoRepository avaliacaoRepository, HorarioRepository horarioRepository, TarefaRepository tarefaRepository, HorarioService horarioService) {
         this.disciplinaRepository = disciplinaRepository;
         this.avaliacaoRepository = avaliacaoRepository;
         this.horarioRepository = horarioRepository;
         this.tarefaRepository = tarefaRepository;
+        this.horarioService = horarioService;
     }
 
     public DisciplinaResponseDTO criarDisciplina(DisciplinaRequestDTO dto, Usuario usuarioLogado) {
@@ -53,12 +57,21 @@ public class DisciplinaService {
         disciplina.setSala(dto.sala());
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
-        disciplina.setStatus(StatusDisciplinaEnum.EM_PROGRESSO); // sempre, na criação
-        disciplina.setTipoMedia(dto.tipoMedia()); // pode ser null
+        disciplina.setStatus(StatusDisciplinaEnum.EM_PROGRESSO);
+        disciplina.setTipoMedia(dto.tipoMedia());
         disciplina.setArquivada(false);
         disciplina.setUsuario(usuarioLogado);
 
         Disciplina salva = disciplinaRepository.save(disciplina);
+
+        if (dto.horarios() != null) {
+            for (HorarioEmbutidoDTO h : dto.horarios()) {
+                HorarioRequestDTO horarioDto = new HorarioRequestDTO(
+                        h.diaSemana(), h.horaInicio(), h.horaFim(), salva.getIdDisciplina());
+                horarioService.criarHorario(horarioDto, usuarioLogado.getIdUsuario());
+            }
+        }
+
         return toResponseDTO(salva);
     }
 

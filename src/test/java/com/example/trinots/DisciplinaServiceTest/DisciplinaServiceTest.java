@@ -8,6 +8,7 @@ import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
 import com.example.trinots.exception.exceptions.*;
 import com.example.trinots.repository.*;
 import com.example.trinots.service.DisciplinaService;
+import com.example.trinots.service.HorarioService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +34,7 @@ class DisciplinaServiceTest {
     private AvaliacaoRepository avaliacaoRepository;
     private TarefaRepository tarefaRepository;
     private DisciplinaService disciplinaService;
+    private HorarioService horarioService;
 
     private UUID idUsuarioLogado;
     private Usuario usuarioLogado;
@@ -45,7 +47,8 @@ class DisciplinaServiceTest {
         horarioRepository = mock(HorarioRepository.class);
         avaliacaoRepository = mock(AvaliacaoRepository.class);
         tarefaRepository = mock(TarefaRepository.class);
-        disciplinaService = new DisciplinaService(disciplinaRepository, avaliacaoRepository, horarioRepository, tarefaRepository);
+        horarioService = mock(HorarioService.class); // novo
+        disciplinaService = new DisciplinaService(disciplinaRepository, avaliacaoRepository, horarioRepository, tarefaRepository, horarioService);
 
         idUsuarioLogado = UUID.randomUUID();
         usuarioLogado = new Usuario();
@@ -65,7 +68,7 @@ class DisciplinaServiceTest {
     }
 
     private DisciplinaRequestDTO criarDtoValido(TipoMediaEnum tipoMedia) {
-        return new DisciplinaRequestDTO("Cálculo 1", 2, "Prof. Ana", "Sala 3", 1, "#FF5733", tipoMedia);
+        return new DisciplinaRequestDTO("Cálculo 1", 2, "Prof. Ana", "Sala 3", 1, "#FF5733", tipoMedia, null);
     }
 
     private Avaliacao criarAvaliacao(Double nota, Double peso, boolean concluida) {
@@ -211,7 +214,7 @@ class DisciplinaServiceTest {
         @Test
         @DisplayName("deve atualizar disciplina com sucesso quando não está arquivada")
         void deveAtualizarComSucesso() {
-            DisciplinaRequestDTO dto = new DisciplinaRequestDTO("Cálculo 2", 3, "Prof. Bruno", "Sala 5", 2, "#00FF00", TipoMediaEnum.PONDERADA);
+            DisciplinaRequestDTO dto = new DisciplinaRequestDTO("Cálculo 2", 3, "Prof. Bruno", "Sala 5", 2, "#00FF00", TipoMediaEnum.PONDERADA, null);
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
             when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));

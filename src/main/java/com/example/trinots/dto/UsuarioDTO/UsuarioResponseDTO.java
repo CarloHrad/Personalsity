@@ -12,6 +12,5 @@ public record UsuarioResponseDTO(
         String email,
         CursoResponseDTO curso,
         Integer semestreAtual,
-        LocalDate dataNascimento,
         boolean ativo
 ) {}

@@ -39,7 +39,6 @@ public class TarefaService {
         Tarefa tarefa = new Tarefa();
         tarefa.setNomeTarefa(dto.nomeTarefa());
         tarefa.setDescricao(dto.descricao());
-        tarefa.setTipoTarefa(dto.tipoTarefa());
         tarefa.setDataEntrega(dto.dataEntrega());
         tarefa.setConcluida(false);
         tarefa.setDataConclusao(null);
@@ -87,7 +86,6 @@ public class TarefaService {
 
         tarefa.setNomeTarefa(dto.nomeTarefa());
         tarefa.setDescricao(dto.descricao());
-        tarefa.setTipoTarefa(dto.tipoTarefa());
         tarefa.setDataEntrega(dto.dataEntrega());
         tarefa.setDisciplina(disciplina);
 
@@ -148,7 +146,6 @@ public class TarefaService {
                 tarefa.getIdTarefa(),
                 tarefa.getNomeTarefa(),
                 tarefa.getDescricao(),
-                tarefa.getTipoTarefa(),
                 tarefa.getDataEntrega(),
                 tarefa.getDataConclusao(),
                 tarefa.getConcluida(),
