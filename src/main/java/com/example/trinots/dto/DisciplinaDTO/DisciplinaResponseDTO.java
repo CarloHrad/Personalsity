@@ -1,5 +1,7 @@
 package com.example.trinots.dto.DisciplinaDTO;
 
+import com.example.trinots.domain.Avaliacao;
+import com.example.trinots.domain.Tarefa;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.HorarioDTO.HorarioResponseDTO;

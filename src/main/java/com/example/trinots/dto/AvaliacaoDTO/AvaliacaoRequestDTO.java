@@ -26,7 +26,7 @@ public record AvaliacaoRequestDTO(
 
         @Positive(message = "Peso deve ser maior que zero")
         @DecimalMax(value = "100.0", message = "Peso deve ser no máximo 100")
-        Double peso, // opcional — obrigatoriedade validada no service conforme tipoMedia
+        Double peso,
 
         @NotNull(message = "Disciplina é obrigatória")
         UUID idDisciplina

@@ -2,6 +2,7 @@ package com.example.trinots.service;
 
 import com.example.trinots.domain.Avaliacao;
 import com.example.trinots.domain.Disciplina;
+import com.example.trinots.domain.Tarefa;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.domain.enums.TipoMediaEnum;
@@ -88,6 +89,19 @@ public class DisciplinaService {
                 .toList();
     }
 
+    public List<DisciplinaResponseDTO> listarDisciplinas(Usuario usuario, StatusDisciplinaEnum status) {
+
+        Integer periodoAtual = usuario.getSemestreAtual();
+
+        List<Disciplina> disciplinas = (status == null)
+                ? disciplinaRepository.findByUsuarioIdUsuarioAndPeriodo(usuario.getIdUsuario(), periodoAtual)
+                : disciplinaRepository.findByUsuarioIdUsuarioAndPeriodoAndStatus(usuario.getIdUsuario(), periodoAtual, status);
+
+        return disciplinas.stream()
+                .map(this::toResponseDTO)
+                .toList();
+    }
+
     public DisciplinaResponseDTO atualizarDisciplina(UUID id, DisciplinaRequestDTO dto, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
@@ -121,7 +135,7 @@ public class DisciplinaService {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
 
         if (disciplina.getTipoMedia() == null) {
-            return null; // tipo de média ainda não definido
+            return null;
         }
 
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)
@@ -210,6 +224,7 @@ public class DisciplinaService {
                 disciplina.getTipoMedia(),
                 disciplina.getArquivada(),
                 horariosDTO
+
         );
     }
 }

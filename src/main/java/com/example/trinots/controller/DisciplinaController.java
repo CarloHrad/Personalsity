@@ -1,6 +1,7 @@
 package com.example.trinots.controller;
 
 import com.example.trinots.domain.Usuario;
+import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
 import com.example.trinots.service.DisciplinaService;
@@ -37,8 +38,10 @@ public class DisciplinaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DisciplinaResponseDTO>> listarAtivas(@AuthenticationPrincipal Usuario usuarioLogado) {
-        return ResponseEntity.ok(disciplinaService.listarDisciplinasAtivas(usuarioLogado.getIdUsuario()));
+    public ResponseEntity<List<DisciplinaResponseDTO>> listar(
+            @AuthenticationPrincipal Usuario usuarioLogado, @RequestParam(required = false) StatusDisciplinaEnum status) {
+
+        return ResponseEntity.ok(disciplinaService.listarDisciplinas(usuarioLogado, status));
     }
 
     @PutMapping("/{id}")

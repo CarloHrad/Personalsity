@@ -20,46 +20,54 @@ public class DemoApplication {
 }
 
 /*
-* Criar Conta
-* Login
+* Criar Conta X
+* Login X
 * Esqueceu a senha
 * Verificar e-mail
 * Redefinir Senha
-* Adicionar Curso
-* Editar Curso
+*
+* Adicionar Curso X
+* Editar Curso X
 * Excluir Curso
-* Adicionar Tarefa
-* Editar Tarefa
-* Visualizar Tarefa
-* Excluir Tarefa
-* Adicionar Prova
-* Editar Prova
-* Visualizar Prova
 *
 * Logout
 *
-* Adicionar Mais Cursos?
-*
 * Calendário
 *
-* Tarefas em Aberto
-* Tarefas Atrasadas
-* Tarefas Concluídas
-* Sem Tarefas*
-*
-* Matérias
-* Filtrar matérias?
-* Adicionar Matéria
-* Adicionar Horário
-* Editar Matéria
-* Editar Horário
-* Visualizar matéria
-*
-* Get tarefas by materia
-* home/sem tarefas
-*
-* Cálculo de Média
-* Editar Tipo de Média
-*
 * Adicionar nova tarefa/prova
+*
+* DISCIPLINA:
+*
+ * Adicionar Matéria X
+ * Adicionar Horário X
+ * Editar Matéria X
+ * Editar Horário X
+ * Visualizar matéria (Puxa provas e tarefas? Puxa MEDIA ATUAL)
+ * Filtrar matérias? X
+*
+* TAREFA:
+*
+ * Adicionar Tarefa ?
+ * Editar Tarefa ?
+ * Visualizar Tarefa X
+ * Excluir Tarefa X
+ *
+ * * Tarefas em Aberto
+ * * Tarefas Atrasadas
+ * * Tarefas Concluídas
+ * * Sem Tarefas*
+ *
+ * * Get tarefas by materia
+ * home/sem tarefas
+ *
+* AVALIAÇÃO:
+*
+ * Adicionar Prova X
+ * Editar Prova X
+ * Visualizar Prova X
+*
+* TIPO MEDIA
+* * Cálculo de Média
+ * Editar Tipo de Média
+*
 * */

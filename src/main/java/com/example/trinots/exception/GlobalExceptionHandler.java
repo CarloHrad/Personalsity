@@ -1,5 +1,6 @@
 package com.example.trinots.exception;
 
+import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.NegocioException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -11,6 +12,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -68,4 +70,13 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponseDTO("400", "JSON malformado ou ilegível", LocalDateTime.now()));
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<String> handleEnum(MethodArgumentTypeMismatchException ex) {
+
+        if (ex.getRequiredType() == StatusDisciplinaEnum.class) {
+            return ResponseEntity.badRequest().body("Status inválido.");
+        }
+
+        return ResponseEntity.badRequest().body("Parâmetro inválido.");
+    }
 }

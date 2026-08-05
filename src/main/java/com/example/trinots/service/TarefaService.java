@@ -2,6 +2,7 @@ package com.example.trinots.service;
 
 import com.example.trinots.domain.Disciplina;
 import com.example.trinots.domain.Tarefa;
+import com.example.trinots.domain.enums.StatusTarefaEnum;
 import com.example.trinots.dto.TarefaDTO.TarefaRequestDTO;
 import com.example.trinots.dto.TarefaDTO.TarefaResponseDTO;
 import com.example.trinots.exception.exceptions.DisciplinaArquivadaException;
@@ -13,6 +14,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -140,6 +142,19 @@ public class TarefaService {
                 .orElseThrow(() -> new EntityNotFoundException("Tarefa não encontrada"));
     }
 
+    private StatusTarefaEnum calcularStatus(Tarefa tarefa) {
+
+        if (Boolean.TRUE.equals(tarefa.getConcluida())) {
+            return StatusTarefaEnum.CONCLUIDA;
+        }
+
+        if (tarefa.getDataEntrega().isBefore(LocalDate.now())) {
+            return StatusTarefaEnum.ATRASADA;
+        }
+
+        return StatusTarefaEnum.PENDENTE;
+    }
+
 
     private TarefaResponseDTO toResponseDTO(Tarefa tarefa) {
         return new TarefaResponseDTO(
@@ -148,7 +163,7 @@ public class TarefaService {
                 tarefa.getDescricao(),
                 tarefa.getDataEntrega(),
                 tarefa.getDataConclusao(),
-                tarefa.getConcluida(),
+                calcularStatus(tarefa),
                 tarefa.getDisciplina().getNomeDisciplina()
         );
     }

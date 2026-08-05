@@ -2,6 +2,8 @@ package com.example.trinots.controller;
 
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
+import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
+import com.example.trinots.dto.CursoDTO.CursoResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
@@ -44,6 +46,11 @@ public class UsuarioController {
     @PutMapping("/me")
     public ResponseEntity<UsuarioResponseDTO> atualizar(@AuthenticationPrincipal Usuario usuarioLogado, @Valid @RequestBody UsuarioUpdateDTO dto) {
         return ResponseEntity.ok(usuarioService.atualizarUsuario(usuarioLogado.getIdUsuario(), dto));
+    }
+
+    @PutMapping("/curso")
+    public ResponseEntity<CursoResponseDTO> atualizarCurso(@AuthenticationPrincipal Usuario usuarioLogado, @Valid @RequestBody CursoRequestDTO dto) {
+        return ResponseEntity.ok(usuarioService.atualizarCurso(usuarioLogado.getIdUsuario(), dto));
     }
 
     @PatchMapping("/me/desativar")

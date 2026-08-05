@@ -1,6 +1,7 @@
 package com.example.trinots.TarefaServiceTest;
 
 import com.example.trinots.domain.*;
+import com.example.trinots.domain.enums.StatusTarefaEnum;
 import com.example.trinots.dto.TarefaDTO.TarefaRequestDTO;
 import com.example.trinots.dto.TarefaDTO.TarefaResponseDTO;
 import com.example.trinots.exception.exceptions.*;
@@ -83,7 +84,7 @@ class TarefaServiceTest {
             TarefaResponseDTO resultado = tarefaService.criarTarefa(dto, idUsuarioLogado);
 
             assertThat(resultado.nomeTarefa()).isEqualTo("Lista 1");
-            assertThat(resultado.concluida()).isFalse();
+            assertThat(resultado.status().equals(StatusTarefaEnum.PENDENTE));
             assertThat(resultado.dataConclusao()).isNull();
         }
 
@@ -124,7 +125,7 @@ class TarefaServiceTest {
 
             TarefaResponseDTO resultado = tarefaService.criarTarefa(dto, idUsuarioLogado);
 
-            assertThat(resultado.concluida()).isFalse();
+            assertThat(resultado.status().equals(StatusTarefaEnum.PENDENTE));
             assertThat(resultado.dataConclusao()).isNull();
         }
     }
@@ -300,7 +301,7 @@ class TarefaServiceTest {
             TarefaResponseDTO resultado = tarefaService.concluirTarefa(idTarefa, idUsuarioLogado);
             LocalDateTime depois = LocalDateTime.now();
 
-            assertThat(resultado.concluida()).isTrue();
+            assertThat(resultado.status().equals(StatusTarefaEnum.CONCLUIDA));
             assertThat(resultado.dataConclusao()).isNotNull();
             assertThat(resultado.dataConclusao()).isBetween(antes, depois);
         }
@@ -348,7 +349,7 @@ class TarefaServiceTest {
 
             TarefaResponseDTO resultado = tarefaService.reabrirTarefa(idTarefa, idUsuarioLogado);
 
-            assertThat(resultado.concluida()).isFalse();
+            assertThat(resultado.status().equals(StatusTarefaEnum.PENDENTE));
             assertThat(resultado.dataConclusao()).isNull();
         }
 
