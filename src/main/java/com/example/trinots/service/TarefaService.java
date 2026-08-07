@@ -65,12 +65,37 @@ public class TarefaService {
                 .toList();
     }
 
+    public List<TarefaResponseDTO> listarPorDisciplinaStatus(UUID idDisciplina, StatusTarefaEnum status, UUID idUsuarioLogado) {
+        buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado);
 
-    public List<TarefaResponseDTO> listarPendentes(UUID idUsuarioLogado) {
-        return tarefaRepository.findByConcluidaFalseAndDisciplinaUsuarioIdUsuario(idUsuarioLogado)
-                .stream()
+        List<Tarefa> tarefas = tarefaRepository.findByDisciplinaIdDisciplina(idDisciplina);
+        LocalDate hoje = LocalDate.now();
+
+        return tarefas.stream()
+                .filter(t -> switch (status) {
+                    case PENDENTE -> !t.getConcluida() && !t.getDataEntrega().isBefore(hoje);
+                    case ATRASADA -> !t.getConcluida() && t.getDataEntrega().isBefore(hoje);
+                    case CONCLUIDA -> t.getConcluida();
+                })
                 .map(this::toResponseDTO)
                 .toList();
+    }
+
+    public List<TarefaResponseDTO> listarPorStatus(StatusTarefaEnum status, Integer periodo, UUID idUsuarioLogado) {
+        List<Tarefa> tarefas = (periodo != null)
+                ? tarefaRepository.findByDisciplinaUsuarioIdUsuarioAndDisciplinaPeriodo(idUsuarioLogado, periodo)
+                : tarefaRepository.findByDisciplinaUsuarioIdUsuario(idUsuarioLogado);
+
+        LocalDate hoje = LocalDate.now();
+
+        return tarefas.stream()
+            .filter(t -> switch (status) {
+                case PENDENTE -> !t.getConcluida() && !t.getDataEntrega().isBefore(hoje);
+                case ATRASADA -> !t.getConcluida() && t.getDataEntrega().isBefore(hoje);
+                case CONCLUIDA -> t.getConcluida();
+            })
+            .map(this::toResponseDTO)
+            .toList();
     }
 
 

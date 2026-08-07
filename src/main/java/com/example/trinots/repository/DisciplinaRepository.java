@@ -30,4 +30,8 @@ public interface DisciplinaRepository extends JpaRepository<Disciplina, UUID> {
 
     List<Disciplina> findByUsuarioIdUsuarioAndStatus(UUID idUsuario, StatusDisciplinaEnum status);
 
+    List<Disciplina> findByUsuarioIdUsuarioAndArquivadaTrue(UUID idUsuario);
+
+    List<Disciplina> findByUsuarioIdUsuarioAndPeriodoAndArquivadaTrue(UUID idUsuario, Integer periodo);
+
 }

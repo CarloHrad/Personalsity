@@ -6,16 +6,16 @@ import com.example.trinots.domain.Tarefa;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.domain.enums.TipoMediaEnum;
+import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoMediaResponseDTO;
+import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoResponseDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioEmbutidoDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioRequestDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioResponseDTO;
+import com.example.trinots.dto.MediaDTO.MediaResponseDTO;
 import com.example.trinots.exception.exceptions.*;
-import com.example.trinots.repository.AvaliacaoRepository;
-import com.example.trinots.repository.DisciplinaRepository;
-import com.example.trinots.repository.HorarioRepository;
-import com.example.trinots.repository.TarefaRepository;
+import com.example.trinots.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
@@ -102,6 +102,15 @@ public class DisciplinaService {
                 .toList();
     }
 
+    public List<DisciplinaResponseDTO> listarArquivadas(Integer periodo, UUID idUsuarioLogado) {
+
+        List<Disciplina> disciplinas = (periodo != null)
+                ? disciplinaRepository.findByUsuarioIdUsuarioAndPeriodoAndArquivadaTrue(idUsuarioLogado, periodo)
+                : disciplinaRepository.findByUsuarioIdUsuarioAndArquivadaTrue(idUsuarioLogado);
+
+        return disciplinas.stream().map(this::toResponseDTO).toList();
+    }
+
     public DisciplinaResponseDTO atualizarDisciplina(UUID id, DisciplinaRequestDTO dto, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
@@ -133,15 +142,18 @@ public class DisciplinaService {
 
     public Double calcularMedia(UUID idDisciplina, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
+        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
+
+        return calcularMedia(disciplina, avaliacoes);
+    }
+
+    private Double calcularMedia(Disciplina disciplina, List<Avaliacao> avaliacoes) {
 
         if (disciplina.getTipoMedia() == null) {
             return null;
         }
 
-        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)
-                .stream()
-                .filter(Avaliacao::getConcluida)
-                .toList();
+        avaliacoes = avaliacoes.stream().filter(Avaliacao::getConcluida).toList();
 
         if (avaliacoes.isEmpty()) {
             return null;
@@ -157,11 +169,34 @@ public class DisciplinaService {
         double somaNotasPonderadas = avaliacoes.stream()
                 .mapToDouble(a -> a.getNotaObtida() * a.getPeso())
                 .sum();
+
         double somaPesos = avaliacoes.stream()
                 .mapToDouble(Avaliacao::getPeso)
                 .sum();
 
         return somaPesos == 0 ? 0.0 : somaNotasPonderadas / somaPesos;
+    }
+
+    public MediaResponseDTO buscarMedia(UUID idDisciplina, UUID idUsuarioLogado) {
+        Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
+        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
+        Double media = calcularMedia(disciplina, avaliacoes);
+
+        Double faltaParaAprovacao = null;
+
+        if (media != null) {
+            faltaParaAprovacao = Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media);
+        }
+
+        List<AvaliacaoMediaResponseDTO> avaliacoesDTO = avaliacoes.stream().map(this::toAvaliacaoMediaResponseDTO).toList();
+
+        return new MediaResponseDTO(
+                disciplina.getTipoMedia(),
+                media,
+                disciplina.getUsuario().getMediaAprovacao(),
+                faltaParaAprovacao,
+                avaliacoesDTO
+        );
     }
 
     public DisciplinaResponseDTO atualizarStatusDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
@@ -206,11 +241,25 @@ public class DisciplinaService {
                 .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
     }
 
+    private AvaliacaoMediaResponseDTO toAvaliacaoMediaResponseDTO(Avaliacao avaliacao) {
+        return new AvaliacaoMediaResponseDTO(
+                avaliacao.getIdAvaliacao(),
+                avaliacao.getNomeAvaliacao(),
+                avaliacao.getNotaObtida(),
+                avaliacao.getNotaMaxima(),
+                avaliacao.getPeso(),
+                avaliacao.getConcluida()
+        );
+    }
+
     private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina) {
         List<HorarioResponseDTO> horariosDTO = horarioRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina())
                 .stream()
                 .map(h -> new HorarioResponseDTO(h.getIdHora(), h.getDiaSemana(), h.getHoraInicio(), h.getHoraFim()))
                 .toList();
+
+        Double media = calcularMedia(disciplina.getIdDisciplina(), disciplina.getUsuario().getIdUsuario());
+        Double faltaParaAprovacao = Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media);
 
         return new DisciplinaResponseDTO(
                 disciplina.getIdDisciplina(),
@@ -222,9 +271,10 @@ public class DisciplinaService {
                 disciplina.getCor(),
                 disciplina.getStatus(),
                 disciplina.getTipoMedia(),
+                media,
+                faltaParaAprovacao,
                 disciplina.getArquivada(),
                 horariosDTO
-
         );
     }
 }

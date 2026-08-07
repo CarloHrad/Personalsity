@@ -4,6 +4,7 @@ import com.example.trinots.domain.Usuario;
 import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
 import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
 import com.example.trinots.dto.CursoDTO.CursoResponseDTO;
+import com.example.trinots.dto.UsuarioDTO.NovaMediaDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
@@ -51,6 +52,17 @@ public class UsuarioController {
     @PutMapping("/curso")
     public ResponseEntity<CursoResponseDTO> atualizarCurso(@AuthenticationPrincipal Usuario usuarioLogado, @Valid @RequestBody CursoRequestDTO dto) {
         return ResponseEntity.ok(usuarioService.atualizarCurso(usuarioLogado.getIdUsuario(), dto));
+    }
+
+    @GetMapping("/configuracoes/media")
+    public ResponseEntity<Double> buscarMediaAprovacao(@AuthenticationPrincipal Usuario usuarioLogado) {
+        return ResponseEntity.ok(usuarioService.buscarMediaAprovacao(usuarioLogado.getIdUsuario()));
+    }
+
+    @PutMapping("/configuracoes/media")
+    public ResponseEntity<Void> alterarMediaAprovacao(@AuthenticationPrincipal Usuario usuarioLogado, @Valid NovaMediaDTO novaMedia) {
+        usuarioService.alterarMediaAprovacao(usuarioLogado.getIdUsuario(), novaMedia);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/me/desativar")

@@ -1,6 +1,7 @@
 package com.example.trinots.controller;
 
 import com.example.trinots.domain.Usuario;
+import com.example.trinots.domain.enums.StatusTarefaEnum;
 import com.example.trinots.dto.TarefaDTO.TarefaRequestDTO;
 import com.example.trinots.dto.TarefaDTO.TarefaResponseDTO;
 import com.example.trinots.service.TarefaService;
@@ -46,12 +47,20 @@ public class TarefaController {
         return ResponseEntity.ok(tarefaService.listarPorDisciplina(idDisciplina, usuarioLogado.getIdUsuario()));
     }
 
+    @GetMapping("/disciplina/{idDisciplina}/status")
+    public ResponseEntity<List<TarefaResponseDTO>> listarPorDisciplinaStatus(
+            @PathVariable UUID idDisciplina, @RequestParam StatusTarefaEnum status, @AuthenticationPrincipal Usuario usuarioLogado) {
 
-    @GetMapping("/pendentes")
-    public ResponseEntity<List<TarefaResponseDTO>> listarPendentes(@AuthenticationPrincipal Usuario usuarioLogado) {
-        return ResponseEntity.ok(tarefaService.listarPendentes(usuarioLogado.getIdUsuario()));
+        return ResponseEntity.ok(tarefaService.listarPorDisciplinaStatus(idDisciplina, status, usuarioLogado.getIdUsuario()));
     }
 
+    @GetMapping
+    public ResponseEntity<List<TarefaResponseDTO>> listar(
+            @RequestParam StatusTarefaEnum status,
+            @RequestParam(required = false) Integer periodo,
+            @AuthenticationPrincipal Usuario usuarioLogado) {
+        return ResponseEntity.ok(tarefaService.listarPorStatus(status, periodo, usuarioLogado.getIdUsuario()));
+    }
 
     @PutMapping("/{id}")
     public ResponseEntity<TarefaResponseDTO> atualizar(@PathVariable UUID id,

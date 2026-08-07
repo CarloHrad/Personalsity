@@ -34,4 +34,6 @@ public class Usuario {
     private Integer semestreAtual;
 
     private boolean ativo = true;
+
+    private Double mediaAprovacao = 6.0;
 }

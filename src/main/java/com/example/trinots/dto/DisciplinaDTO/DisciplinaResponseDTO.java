@@ -19,6 +19,8 @@ public record DisciplinaResponseDTO(
         String cor,
         StatusDisciplinaEnum status,
         TipoMediaEnum tipoMedia,
+        Double mediaAtual,
+        Double faltaParaAprovacao,
         Boolean arquivada,
         List<HorarioResponseDTO> horarios
 ) {}

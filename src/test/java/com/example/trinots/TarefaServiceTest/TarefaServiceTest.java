@@ -188,7 +188,7 @@ class TarefaServiceTest {
         }
     }
 
-    @Nested
+    /*@Nested
     @DisplayName("listarPendentes")
     class ListarPendentes {
 
@@ -214,7 +214,7 @@ class TarefaServiceTest {
 
             assertThat(resultado).isEmpty();
         }
-    }
+    }*/
 
     @Nested
     @DisplayName("atualizarTarefa")

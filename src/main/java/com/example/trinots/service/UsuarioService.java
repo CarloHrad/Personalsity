@@ -6,6 +6,7 @@ import com.example.trinots.domain.Usuario;
 import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
 import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
 import com.example.trinots.dto.CursoDTO.CursoResponseDTO;
+import com.example.trinots.dto.UsuarioDTO.NovaMediaDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
@@ -115,6 +116,25 @@ public class UsuarioService {
     private Curso buscarCursoPorId(UUID id) {
         return cursoRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Curso não encontrado"));
     }
+
+
+    public Double buscarMediaAprovacao(UUID idUsuarioLogado) {
+        Usuario usuario = usuarioRepository.findById(idUsuarioLogado).orElseThrow(
+                () -> new EntityNotFoundException("Usuário não encontrado.")
+        );
+
+        return usuario.getMediaAprovacao();
+    }
+
+    public void alterarMediaAprovacao(UUID idUsuarioLogado, NovaMediaDTO dto) {
+        Usuario usuario = usuarioRepository.findById(idUsuarioLogado).orElseThrow(
+                () -> new EntityNotFoundException("Usuário não encontrado.")
+        );
+
+        usuario.setMediaAprovacao(dto.novaMedia());
+        usuarioRepository.save(usuario);
+    }
+
 
     public void desativarUsuario(UUID id) {
             Usuario usuario = usuarioRepository.findById(id)

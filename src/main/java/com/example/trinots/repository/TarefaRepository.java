@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface TarefaRepository extends JpaRepository<Tarefa, UUID> {
     List<Tarefa> findByDisciplinaIdDisciplina(UUID idDisciplina);
-    List<Tarefa> findByConcluidaFalseAndDisciplinaUsuarioIdUsuario(UUID idUsuario);
     Optional<Tarefa> findByIdTarefaAndDisciplinaUsuarioIdUsuario(UUID idTarefa, UUID idUsuario);
+    List<Tarefa> findByDisciplinaUsuarioIdUsuario(UUID idUsuario);
+    List<Tarefa> findByDisciplinaUsuarioIdUsuarioAndDisciplinaPeriodo(UUID idUsuario, Integer periodo);
 }

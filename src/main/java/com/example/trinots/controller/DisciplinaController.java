@@ -4,6 +4,7 @@ import com.example.trinots.domain.Usuario;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
+import com.example.trinots.dto.MediaDTO.MediaResponseDTO;
 import com.example.trinots.service.DisciplinaService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -44,11 +45,23 @@ public class DisciplinaController {
         return ResponseEntity.ok(disciplinaService.listarDisciplinas(usuarioLogado, status));
     }
 
+    @GetMapping("/arquivadas")
+    public ResponseEntity<List<DisciplinaResponseDTO>> listarArquivadas(
+            @RequestParam(required = false) Integer periodo, @AuthenticationPrincipal Usuario usuarioLogado) {
+
+        return ResponseEntity.ok(disciplinaService.listarArquivadas(periodo, usuarioLogado.getIdUsuario()));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<DisciplinaResponseDTO> atualizar(@PathVariable UUID id,
                                                            @Valid @RequestBody DisciplinaRequestDTO dto,
                                                            @AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(disciplinaService.atualizarDisciplina(id, dto, usuarioLogado.getIdUsuario()));
+    }
+
+    @GetMapping("/{idDisciplina}/media")
+    public ResponseEntity<MediaResponseDTO> buscarMedia(@PathVariable UUID idDisciplina, @AuthenticationPrincipal Usuario usuarioLogado) {
+        return ResponseEntity.ok(disciplinaService.buscarMedia(idDisciplina, usuarioLogado.getIdUsuario()));
     }
 
     @PatchMapping("/{id}/arquivar")
