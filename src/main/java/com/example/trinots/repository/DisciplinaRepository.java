@@ -16,20 +16,10 @@ public interface DisciplinaRepository extends JpaRepository<Disciplina, UUID> {
 
     Optional<Disciplina> findByIdDisciplinaAndUsuarioIdUsuario(UUID idDisciplina, UUID idUsuario);
 
-    Optional<Disciplina> findByNomeDisciplina(String nomeDisciplina);
-
-    boolean existsByNomeDisciplina(String nomeDisciplina);
-
-    List<Disciplina> findByStatus(StatusDisciplinaEnum status);
-
-    List<Disciplina> findByPeriodo(Integer periodo);
-
     List<Disciplina> findByUsuarioIdUsuarioAndPeriodo(UUID idUsuario, Integer periodo);
 
     List<Disciplina> findByUsuarioIdUsuarioAndPeriodoAndStatus(UUID idUsuario, Integer periodo, StatusDisciplinaEnum status);
-
-    List<Disciplina> findByUsuarioIdUsuarioAndStatus(UUID idUsuario, StatusDisciplinaEnum status);
-
+    
     List<Disciplina> findByUsuarioIdUsuarioAndArquivadaTrue(UUID idUsuario);
 
     List<Disciplina> findByUsuarioIdUsuarioAndPeriodoAndArquivadaTrue(UUID idUsuario, Integer periodo);

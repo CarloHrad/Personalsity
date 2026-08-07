@@ -6,7 +6,7 @@ import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoConcluirDTO;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoRequestDTO;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoResponseDTO;
-import com.example.trinots.exception.PesoObrigatorioException;
+import com.example.trinots.exception.exceptions.PesoObrigatorioException;
 import com.example.trinots.exception.exceptions.*;
 import com.example.trinots.repository.AvaliacaoRepository;
 import com.example.trinots.repository.DisciplinaRepository;
@@ -27,7 +27,6 @@ public class AvaliacaoService {
     private final DisciplinaRepository disciplinaRepository;
     private final DisciplinaService disciplinaService;
 
-
     public AvaliacaoService(AvaliacaoRepository avaliacaoRepository,
                             DisciplinaRepository disciplinaRepository,
                             DisciplinaService disciplinaService) {
@@ -35,7 +34,6 @@ public class AvaliacaoService {
         this.disciplinaRepository = disciplinaRepository;
         this.disciplinaService = disciplinaService;
     }
-
 
     public AvaliacaoResponseDTO criarAvaliacao(AvaliacaoRequestDTO dto, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
@@ -76,11 +74,9 @@ public class AvaliacaoService {
         return toResponseDTO(salva);
     }
 
-
     public AvaliacaoResponseDTO buscarAvaliacaoPorId(UUID id, UUID idUsuarioLogado) {
         return toResponseDTO(buscarEntidadeDoUsuario(id, idUsuarioLogado));
     }
-
 
     public List<AvaliacaoResponseDTO> listarPorDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
         buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado);
@@ -90,21 +86,25 @@ public class AvaliacaoService {
                 .toList();
     }
 
-
     public AvaliacaoResponseDTO atualizarAvaliacao(UUID id, AvaliacaoRequestDTO dto, UUID idUsuarioLogado) {
         Avaliacao avaliacao = buscarEntidadeDoUsuario(id, idUsuarioLogado);
-        Disciplina disciplina = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
+        Disciplina disciplina = avaliacao.getDisciplina();
 
         if (disciplina.getArquivada()) {
             throw new DisciplinaArquivadaException("Não é possível editar avaliação de uma disciplina arquivada");
+        }
+
+        // avaliação pertence à disciplina onde foi criada; não é permitido "mover" entre disciplinas —
+        // se o usuário errou a disciplina, o fluxo correto é excluir e recriar na disciplina certa
+        if (!disciplina.getIdDisciplina().equals(dto.idDisciplina())) {
+            throw new DisciplinaImutavelException("Não é possível mover uma avaliação para outra disciplina. Exclua e crie novamente na disciplina correta.");
         }
 
         if (avaliacao.getConcluida()) {
             boolean tentandoAlterarCampoTravado =
                     !avaliacao.getNotaMaxima().equals(dto.notaMaxima()) ||
                             !Objects.equals(avaliacao.getPeso(), dto.peso()) ||
-                            !Objects.equals(avaliacao.getNotaObtida(), dto.notaObtida()) ||
-                            !avaliacao.getDisciplina().getIdDisciplina().equals(dto.idDisciplina());
+                            !Objects.equals(avaliacao.getNotaObtida(), dto.notaObtida());
 
             if (tentandoAlterarCampoTravado) {
                 throw new AvaliacaoJaConcluidaException(
@@ -130,14 +130,16 @@ public class AvaliacaoService {
         avaliacao.setDataAvaliacao(dto.dataAvaliacao());
         avaliacao.setNotaMaxima(dto.notaMaxima());
         avaliacao.setPeso(peso);
-        avaliacao.setDisciplina(disciplina);
 
         return toResponseDTO(avaliacaoRepository.save(avaliacao));
     }
 
-
     public AvaliacaoResponseDTO concluirAvaliacao(UUID id, AvaliacaoConcluirDTO dto, UUID idUsuarioLogado) {
         Avaliacao avaliacao = buscarEntidadeDoUsuario(id, idUsuarioLogado);
+
+        if (avaliacao.getDisciplina().getArquivada()) {
+            throw new DisciplinaArquivadaException("Não é possível concluir avaliação de uma disciplina arquivada");
+        }
 
         if (avaliacao.getConcluida()) {
             throw new AvaliacaoJaConcluidaException("Avaliação já está concluída");
@@ -159,9 +161,12 @@ public class AvaliacaoService {
         return toResponseDTO(atualizada);
     }
 
-
     public AvaliacaoResponseDTO reabrirAvaliacao(UUID id, UUID idUsuarioLogado) {
         Avaliacao avaliacao = buscarEntidadeDoUsuario(id, idUsuarioLogado);
+
+        if (avaliacao.getDisciplina().getArquivada()) {
+            throw new DisciplinaArquivadaException("Não é possível reabrir avaliação de uma disciplina arquivada");
+        }
 
         if (!avaliacao.getConcluida()) {
             throw new AvaliacaoNaoConcluidaException("Avaliação ainda não foi concluída");
@@ -178,8 +183,8 @@ public class AvaliacaoService {
         return toResponseDTO(atualizada);
     }
 
-
     public void deletarAvaliacao(UUID id, UUID idUsuarioLogado) {
+        // deletar é permitido mesmo com disciplina arquivada (intencional)
         Avaliacao avaliacao = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         UUID idDisciplina = avaliacao.getDisciplina().getIdDisciplina();
         boolean estavaConcluida = avaliacao.getConcluida();
@@ -191,7 +196,6 @@ public class AvaliacaoService {
         }
     }
 
-
     private Double resolverPeso(Disciplina disciplina, Double pesoInformado) {
         if (disciplina.getTipoMedia() == TipoMediaEnum.PONDERADA && pesoInformado == null) {
             throw new PesoObrigatorioException("Peso é obrigatório para disciplinas com média ponderada");
@@ -199,18 +203,15 @@ public class AvaliacaoService {
         return disciplina.getTipoMedia() == TipoMediaEnum.SIMPLES ? 1.0 : pesoInformado;
     }
 
-
     private Disciplina buscarDisciplinaDoUsuario(UUID idDisciplina, UUID idUsuarioLogado) {
         return disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado)
                 .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
     }
 
-
     private Avaliacao buscarEntidadeDoUsuario(UUID id, UUID idUsuarioLogado) {
         return avaliacaoRepository.findByIdAvaliacaoAndDisciplinaUsuarioIdUsuario(id, idUsuarioLogado)
                 .orElseThrow(() -> new EntityNotFoundException("Avaliação não encontrada"));
     }
-
 
     private AvaliacaoResponseDTO toResponseDTO(Avaliacao avaliacao) {
         return new AvaliacaoResponseDTO(

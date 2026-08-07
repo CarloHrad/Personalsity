@@ -17,7 +17,6 @@ public record TarefaRequestDTO(
         String descricao,
 
         @NotNull(message = "Data de entrega é obrigatória") //faz sentido deixar opcional?
-        @FutureOrPresent(message = "Data de entrega não pode ser no passado")
         LocalDate dataEntrega,
 
         @NotNull(message = "Disciplina é obrigatória")

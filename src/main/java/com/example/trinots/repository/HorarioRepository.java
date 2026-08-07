@@ -12,4 +12,5 @@ public interface HorarioRepository extends JpaRepository<Horario, UUID> {
     List<Horario> findByDisciplinaIdDisciplina(UUID idDisciplina);
     List<Horario> findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(UUID idUsuario, DiaSemanaEnum diaSemana);
     Optional<Horario> findByIdHoraAndDisciplinaUsuarioIdUsuario(UUID idHora, UUID idUsuario);
+    List<Horario> findByDisciplinaIdDisciplinaIn(List<UUID> idsDisciplina);
 }

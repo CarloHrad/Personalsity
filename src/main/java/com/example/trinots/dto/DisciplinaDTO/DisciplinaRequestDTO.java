@@ -18,9 +18,11 @@ public record DisciplinaRequestDTO(
         @Max(value = 20, message = "Período deve ser no máximo 20")
         Integer periodo,
 
+        @NotBlank
         @Size(max = 100, message = "Nome do professor deve ter no máximo 100 caracteres")
         String professor,
 
+        @NotBlank
         @Size(max = 20, message = "Sala deve ter no máximo 20 caracteres")
         String sala,
 
@@ -28,6 +30,7 @@ public record DisciplinaRequestDTO(
         @Max(value = 200, message = "Andar deve ser no máximo 200")
         Integer andar,
 
+        @NotNull
         @Pattern(regexp = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$", message = "Cor deve estar em formato hexadecimal (ex: #FF5733)")
         String cor,
 

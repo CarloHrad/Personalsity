@@ -50,12 +50,10 @@ public class TarefaService {
         return toResponseDTO(salva);
     }
 
-
     public TarefaResponseDTO buscarTarefaPorId(UUID id, UUID idUsuarioLogado) {
         Tarefa tarefa = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         return toResponseDTO(tarefa);
     }
-
 
     public List<TarefaResponseDTO> listarPorDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
         buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado);
@@ -68,15 +66,9 @@ public class TarefaService {
     public List<TarefaResponseDTO> listarPorDisciplinaStatus(UUID idDisciplina, StatusTarefaEnum status, UUID idUsuarioLogado) {
         buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado);
 
-        List<Tarefa> tarefas = tarefaRepository.findByDisciplinaIdDisciplina(idDisciplina);
-        LocalDate hoje = LocalDate.now();
-
-        return tarefas.stream()
-                .filter(t -> switch (status) {
-                    case PENDENTE -> !t.getConcluida() && !t.getDataEntrega().isBefore(hoje);
-                    case ATRASADA -> !t.getConcluida() && t.getDataEntrega().isBefore(hoje);
-                    case CONCLUIDA -> t.getConcluida();
-                })
+        return tarefaRepository.findByDisciplinaIdDisciplina(idDisciplina)
+                .stream()
+                .filter(t -> calcularStatus(t) == status)
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -86,24 +78,17 @@ public class TarefaService {
                 ? tarefaRepository.findByDisciplinaUsuarioIdUsuarioAndDisciplinaPeriodo(idUsuarioLogado, periodo)
                 : tarefaRepository.findByDisciplinaUsuarioIdUsuario(idUsuarioLogado);
 
-        LocalDate hoje = LocalDate.now();
-
         return tarefas.stream()
-            .filter(t -> switch (status) {
-                case PENDENTE -> !t.getConcluida() && !t.getDataEntrega().isBefore(hoje);
-                case ATRASADA -> !t.getConcluida() && t.getDataEntrega().isBefore(hoje);
-                case CONCLUIDA -> t.getConcluida();
-            })
-            .map(this::toResponseDTO)
-            .toList();
+                .filter(t -> calcularStatus(t) == status)
+                .map(this::toResponseDTO)
+                .toList();
     }
-
 
     public TarefaResponseDTO atualizarTarefa(UUID id, TarefaRequestDTO dto, UUID idUsuarioLogado) {
         Tarefa tarefa = buscarEntidadeDoUsuario(id, idUsuarioLogado);
-        Disciplina disciplina = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
 
-        if (disciplina.getArquivada()) {
+        // valida a disciplina ATUAL da tarefa, não só a de destino
+        if (tarefa.getDisciplina().getArquivada()) {
             throw new DisciplinaArquivadaException("Não é possível editar tarefa de uma disciplina arquivada");
         }
 
@@ -111,15 +96,20 @@ public class TarefaService {
             throw new TarefaJaConcluidaException("Não é possível editar uma tarefa já concluída");
         }
 
+        Disciplina disciplinaDestino = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
+
+        if (disciplinaDestino.getArquivada()) {
+            throw new DisciplinaArquivadaException("Não é possível mover tarefa para uma disciplina arquivada");
+        }
+
         tarefa.setNomeTarefa(dto.nomeTarefa());
         tarefa.setDescricao(dto.descricao());
         tarefa.setDataEntrega(dto.dataEntrega());
-        tarefa.setDisciplina(disciplina);
+        tarefa.setDisciplina(disciplinaDestino);
 
         Tarefa atualizada = tarefaRepository.save(tarefa);
         return toResponseDTO(atualizada);
     }
-
 
     public TarefaResponseDTO concluirTarefa(UUID id, UUID idUsuarioLogado) {
         Tarefa tarefa = buscarEntidadeDoUsuario(id, idUsuarioLogado);
@@ -129,7 +119,7 @@ public class TarefaService {
         }
 
         tarefa.setConcluida(true);
-        tarefa.setDataConclusao(LocalDateTime.now()); // agora com hora exata
+        tarefa.setDataConclusao(LocalDateTime.now());
 
         Tarefa atualizada = tarefaRepository.save(tarefa);
         return toResponseDTO(atualizada);
@@ -149,18 +139,15 @@ public class TarefaService {
         return toResponseDTO(atualizada);
     }
 
-
     public void deletarTarefa(UUID id, UUID idUsuarioLogado) {
         Tarefa tarefa = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         tarefaRepository.delete(tarefa);
     }
 
-
     private Disciplina buscarDisciplinaDoUsuario(UUID idDisciplina, UUID idUsuarioLogado) {
         return disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado)
                 .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
     }
-
 
     private Tarefa buscarEntidadeDoUsuario(UUID id, UUID idUsuarioLogado) {
         return tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(id, idUsuarioLogado)
@@ -168,7 +155,6 @@ public class TarefaService {
     }
 
     private StatusTarefaEnum calcularStatus(Tarefa tarefa) {
-
         if (Boolean.TRUE.equals(tarefa.getConcluida())) {
             return StatusTarefaEnum.CONCLUIDA;
         }
@@ -179,7 +165,6 @@ public class TarefaService {
 
         return StatusTarefaEnum.PENDENTE;
     }
-
 
     private TarefaResponseDTO toResponseDTO(Tarefa tarefa) {
         return new TarefaResponseDTO(

@@ -21,10 +21,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -35,8 +33,6 @@ public class DisciplinaService {
     private final AvaliacaoRepository avaliacaoRepository;
     private final TarefaRepository tarefaRepository;
     private final HorarioService horarioService;
-
-    private static final double MEDIA_MINIMA_APROVACAO = 6.0;
 
     public DisciplinaService(DisciplinaRepository disciplinaRepository, AvaliacaoRepository avaliacaoRepository, HorarioRepository horarioRepository, TarefaRepository tarefaRepository, HorarioService horarioService) {
         this.disciplinaRepository = disciplinaRepository;
@@ -82,33 +78,29 @@ public class DisciplinaService {
     }
 
     public List<DisciplinaResponseDTO> listarDisciplinasAtivas(UUID idUsuarioLogado) {
-        return disciplinaRepository.findByUsuarioIdUsuario(idUsuarioLogado)
+        List<Disciplina> disciplinas = disciplinaRepository.findByUsuarioIdUsuario(idUsuarioLogado)
                 .stream()
                 .filter(d -> !d.getArquivada())
-                .map(this::toResponseDTO)
                 .toList();
+        return toResponseDTOList(disciplinas);
     }
 
     public List<DisciplinaResponseDTO> listarDisciplinas(Usuario usuario, StatusDisciplinaEnum status) {
-
         Integer periodoAtual = usuario.getSemestreAtual();
 
         List<Disciplina> disciplinas = (status == null)
                 ? disciplinaRepository.findByUsuarioIdUsuarioAndPeriodo(usuario.getIdUsuario(), periodoAtual)
                 : disciplinaRepository.findByUsuarioIdUsuarioAndPeriodoAndStatus(usuario.getIdUsuario(), periodoAtual, status);
 
-        return disciplinas.stream()
-                .map(this::toResponseDTO)
-                .toList();
+        return toResponseDTOList(disciplinas);
     }
 
     public List<DisciplinaResponseDTO> listarArquivadas(Integer periodo, UUID idUsuarioLogado) {
-
         List<Disciplina> disciplinas = (periodo != null)
                 ? disciplinaRepository.findByUsuarioIdUsuarioAndPeriodoAndArquivadaTrue(idUsuarioLogado, periodo)
                 : disciplinaRepository.findByUsuarioIdUsuarioAndArquivadaTrue(idUsuarioLogado);
 
-        return disciplinas.stream().map(this::toResponseDTO).toList();
+        return toResponseDTOList(disciplinas);
     }
 
     public DisciplinaResponseDTO atualizarDisciplina(UUID id, DisciplinaRequestDTO dto, UUID idUsuarioLogado) {
@@ -120,7 +112,12 @@ public class DisciplinaService {
 
         boolean temAvaliacoes = !avaliacaoRepository.findByDisciplinaIdDisciplina(id).isEmpty();
 
-        if (temAvaliacoes && !Objects.equals(disciplina.getTipoMedia(), dto.tipoMedia())) {
+        // só valida imutabilidade se o cliente REALMENTE tentou mudar o tipoMedia
+        // (dto.tipoMedia() == null significa "não alterar", não "limpar o campo")
+        boolean tentandoAlterarTipoMedia = dto.tipoMedia() != null
+                && !Objects.equals(disciplina.getTipoMedia(), dto.tipoMedia());
+
+        if (temAvaliacoes && tentandoAlterarTipoMedia) {
             throw new TipoMediaImutavelException(
                     "Não é possível alterar o tipo de média: a disciplina já possui avaliações cadastradas");
         }
@@ -132,7 +129,8 @@ public class DisciplinaService {
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
 
-        if (!temAvaliacoes) {
+        // só atualiza tipoMedia se veio preenchido no DTO — nunca apaga um valor já definido
+        if (dto.tipoMedia() != null && !temAvaliacoes) {
             disciplina.setTipoMedia(dto.tipoMedia());
         }
 
@@ -143,12 +141,10 @@ public class DisciplinaService {
     public Double calcularMedia(UUID idDisciplina, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
-
         return calcularMedia(disciplina, avaliacoes);
     }
 
     private Double calcularMedia(Disciplina disciplina, List<Avaliacao> avaliacoes) {
-
         if (disciplina.getTipoMedia() == null) {
             return null;
         }
@@ -182,11 +178,9 @@ public class DisciplinaService {
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
         Double media = calcularMedia(disciplina, avaliacoes);
 
-        Double faltaParaAprovacao = null;
-
-        if (media != null) {
-            faltaParaAprovacao = Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media);
-        }
+        Double faltaParaAprovacao = (media != null)
+                ? Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media)
+                : null;
 
         List<AvaliacaoMediaResponseDTO> avaliacoesDTO = avaliacoes.stream().map(this::toAvaliacaoMediaResponseDTO).toList();
 
@@ -201,18 +195,20 @@ public class DisciplinaService {
 
     public DisciplinaResponseDTO atualizarStatusDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
-        Double media = calcularMedia(idDisciplina, idUsuarioLogado);
+        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
+        Double media = calcularMedia(disciplina, avaliacoes);
 
         if (media == null) {
             disciplina.setStatus(StatusDisciplinaEnum.EM_PROGRESSO);
-        } else if (media >= MEDIA_MINIMA_APROVACAO) {
+        } else if (media >= disciplina.getUsuario().getMediaAprovacao()) {
             disciplina.setStatus(StatusDisciplinaEnum.APROVADO);
         } else {
             disciplina.setStatus(StatusDisciplinaEnum.REPROVADO);
         }
 
         Disciplina atualizada = disciplinaRepository.save(disciplina);
-        return toResponseDTO(atualizada);
+        // reaproveita a mesma lista de avaliações já carregada, evita 2ª query
+        return toResponseDTO(atualizada, avaliacoes);
     }
 
     public void arquivarDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
@@ -241,6 +237,13 @@ public class DisciplinaService {
                 .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
     }
 
+    public void recalcularStatusDeTodasAsDisciplinas(UUID idUsuarioLogado) {
+        List<Disciplina> disciplinas = disciplinaRepository.findByUsuarioIdUsuario(idUsuarioLogado);
+        for (Disciplina disciplina : disciplinas) {
+            atualizarStatusDisciplina(disciplina.getIdDisciplina(), idUsuarioLogado);
+        }
+    }
+
     private AvaliacaoMediaResponseDTO toAvaliacaoMediaResponseDTO(Avaliacao avaliacao) {
         return new AvaliacaoMediaResponseDTO(
                 avaliacao.getIdAvaliacao(),
@@ -252,14 +255,44 @@ public class DisciplinaService {
         );
     }
 
-    private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina) {
-        List<HorarioResponseDTO> horariosDTO = horarioRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina())
-                .stream()
-                .map(h -> new HorarioResponseDTO(h.getIdHora(), h.getDiaSemana(), h.getHoraInicio(), h.getHoraFim()))
-                .toList();
+    private List<DisciplinaResponseDTO> toResponseDTOList(List<Disciplina> disciplinas) {
+        if (disciplinas.isEmpty()) {
+            return List.of();
+        }
 
-        Double media = calcularMedia(disciplina.getIdDisciplina(), disciplina.getUsuario().getIdUsuario());
-        Double faltaParaAprovacao = Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media);
+        List<UUID> ids = disciplinas.stream().map(Disciplina::getIdDisciplina).toList();
+
+        Map<UUID, List<Avaliacao>> avaliacoesPorDisciplina = avaliacaoRepository
+                .findByDisciplinaIdDisciplinaIn(ids)
+                .stream()
+                .collect(Collectors.groupingBy(a -> a.getDisciplina().getIdDisciplina()));
+
+        Map<UUID, List<HorarioResponseDTO>> horariosPorDisciplina = horarioRepository
+                .findByDisciplinaIdDisciplinaIn(ids)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        h -> h.getDisciplina().getIdDisciplina(),
+                        Collectors.mapping(
+                                h -> new HorarioResponseDTO(h.getIdHora(), h.getDiaSemana(), h.getHoraInicio(), h.getHoraFim()),
+                                Collectors.toList()
+                        )
+                ));
+
+        return disciplinas.stream()
+                .map(d -> toResponseDTO(
+                        d,
+                        avaliacoesPorDisciplina.getOrDefault(d.getIdDisciplina(), List.of()),
+                        horariosPorDisciplina.getOrDefault(d.getIdDisciplina(), List.of())
+                ))
+                .toList();
+    }
+
+    // versão usada quando avaliações E horários já vêm prontos (batch, evita N+1)
+    private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina, List<Avaliacao> avaliacoes, List<HorarioResponseDTO> horariosDTO) {
+        Double media = calcularMedia(disciplina, avaliacoes);
+        Double faltaParaAprovacao = (media != null)
+                ? Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media)
+                : null;
 
         return new DisciplinaResponseDTO(
                 disciplina.getIdDisciplina(),
@@ -276,5 +309,21 @@ public class DisciplinaService {
                 disciplina.getArquivada(),
                 horariosDTO
         );
+    }
+
+    // versão usada quando só avaliações vêm prontas (ex: atualizarStatusDisciplina), busca horário sozinho
+    private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina, List<Avaliacao> avaliacoes) {
+        List<HorarioResponseDTO> horariosDTO = horarioRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina())
+                .stream()
+                .map(h -> new HorarioResponseDTO(h.getIdHora(), h.getDiaSemana(), h.getHoraInicio(), h.getHoraFim()))
+                .toList();
+
+        return toResponseDTO(disciplina, avaliacoes, horariosDTO);
+    }
+
+    // versão usada quando nada vem pronto (ex: criarDisciplina, buscarDisciplinaPorId), busca tudo sozinho
+    private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina) {
+        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina());
+        return toResponseDTO(disciplina, avaliacoes);
     }
 }

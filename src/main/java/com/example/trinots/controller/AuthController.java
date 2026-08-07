@@ -32,4 +32,9 @@ public class AuthController {
         authService.redefinirSenhaComToken(dto);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent().build();
+    }
 }

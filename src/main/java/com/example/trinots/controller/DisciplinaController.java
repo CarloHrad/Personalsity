@@ -52,6 +52,11 @@ public class DisciplinaController {
         return ResponseEntity.ok(disciplinaService.listarArquivadas(periodo, usuarioLogado.getIdUsuario()));
     }
 
+    @GetMapping("/ativas")
+    public ResponseEntity<List<DisciplinaResponseDTO>> listarAtivas(@AuthenticationPrincipal Usuario usuarioLogado) {
+        return ResponseEntity.ok(disciplinaService.listarDisciplinasAtivas(usuarioLogado.getIdUsuario()));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<DisciplinaResponseDTO> atualizar(@PathVariable UUID id,
                                                            @Valid @RequestBody DisciplinaRequestDTO dto,

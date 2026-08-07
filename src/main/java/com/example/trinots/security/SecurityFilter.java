@@ -35,6 +35,11 @@ public class SecurityFilter extends OncePerRequestFilter {
             if (email != null) {
                 Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
 
+                if (usuario != null && usuario.isAtivo()) {
+                    var authentication = new UsernamePasswordAuthenticationToken(usuario, null, Collections.emptyList());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+                
                 if (usuario != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(usuario, null, Collections.emptyList());
                     SecurityContextHolder.getContext().setAuthentication(authentication);

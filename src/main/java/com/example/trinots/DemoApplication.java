@@ -52,12 +52,12 @@ public class DemoApplication {
  * Visualizar Tarefa X
  * Excluir Tarefa X
  *
- * * Tarefas em Aberto
- * * Tarefas Atrasadas
- * * Tarefas Concluídas
- * * Sem Tarefas*
+ * * Tarefas em Aberto X
+ * * Tarefas Atrasadas X
+ * * Tarefas Concluídas X
+ * * Sem Tarefas* X
  *
- * * Get tarefas by materia
+ * * Get tarefas by materia X
  * home/sem tarefas
  *
 * AVALIAÇÃO:
@@ -67,7 +67,7 @@ public class DemoApplication {
  * Visualizar Prova X
 *
 * TIPO MEDIA
-* * Cálculo de Média
+* * Cálculo de Média X
  * Editar Tipo de Média
 *
 * */

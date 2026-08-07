@@ -1,7 +1,6 @@
-package com.example.trinots.exception;
+package com.example.trinots.exception.exceptions;
 
 
-import com.example.trinots.exception.exceptions.NegocioException;
 import org.springframework.http.HttpStatus;
 
 public class PesoObrigatorioException extends NegocioException {

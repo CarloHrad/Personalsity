@@ -10,7 +10,9 @@ import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.EmailJaCadastradoException;
 import com.example.trinots.repository.CursoRepository;
+import com.example.trinots.repository.DisciplinaRepository;
 import com.example.trinots.repository.UsuarioRepository;
+import com.example.trinots.service.DisciplinaService;
 import com.example.trinots.service.UsuarioService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +41,8 @@ class UsuarioServiceTest {
     private CursoRepository cursoRepository;
     private PasswordEncoder passwordEncoder;
     private UsuarioService usuarioService;
+    private DisciplinaRepository disciplinaRepository;
+    private DisciplinaService disciplinaService;
 
     private UUID usuarioId;
     private Usuario usuarioExistente;
@@ -48,7 +52,9 @@ class UsuarioServiceTest {
         usuarioRepository = mock(UsuarioRepository.class);
         cursoRepository = mock(CursoRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
-        usuarioService = new UsuarioService(usuarioRepository, cursoRepository, passwordEncoder);
+        disciplinaRepository = mock(DisciplinaRepository.class);
+        disciplinaService = mock(DisciplinaService.class);
+        usuarioService = new UsuarioService(usuarioRepository, cursoRepository, passwordEncoder, disciplinaRepository, disciplinaService);
 
         usuarioId = UUID.randomUUID();
 

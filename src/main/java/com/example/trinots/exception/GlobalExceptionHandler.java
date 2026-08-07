@@ -2,10 +2,13 @@ package com.example.trinots.exception;
 
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
+import com.example.trinots.exception.exceptions.ErrorValidationResponseDTO;
 import com.example.trinots.exception.exceptions.NegocioException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +25,8 @@ import java.util.Objects;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(NegocioException.class)
     public ResponseEntity<ErrorResponseDTO> handleNegocio(NegocioException ex) {
@@ -35,16 +41,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorValidationResponseDTO> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> erros = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(erro ->
                 erros.put(erro.getField(), erro.getDefaultMessage())
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erros);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorValidationResponseDTO("400", "Um ou mais campos são inválidos", LocalDateTime.now(), erros));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGeneric(Exception ex) {
+        log.error("Erro não tratado", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponseDTO("500", "Erro interno no servidor", LocalDateTime.now()));
     }
@@ -71,12 +79,17 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<String> handleEnum(MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<ErrorResponseDTO> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String tipoEsperado = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "desconhecido";
+        String mensagem = "Parâmetro '" + ex.getName() + "' inválido, esperado tipo " + tipoEsperado;
 
-        if (ex.getRequiredType() == StatusDisciplinaEnum.class) {
-            return ResponseEntity.badRequest().body("Status inválido.");
-        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDTO("400", mensagem, LocalDateTime.now()));
+    }
 
-        return ResponseEntity.badRequest().body("Parâmetro inválido.");
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponseDTO("403", "Você não tem permissão para acessar este recurso", LocalDateTime.now()));
     }
 }

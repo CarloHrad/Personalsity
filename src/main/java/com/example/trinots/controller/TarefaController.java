@@ -20,11 +20,9 @@ public class TarefaController {
 
     private final TarefaService tarefaService;
 
-
     public TarefaController(TarefaService tarefaService) {
         this.tarefaService = tarefaService;
     }
-
 
     @PostMapping
     public ResponseEntity<TarefaResponseDTO> criar(@Valid @RequestBody TarefaRequestDTO dto,
@@ -33,13 +31,11 @@ public class TarefaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(criada);
     }
 
-
     @GetMapping("/{id}")
     public ResponseEntity<TarefaResponseDTO> buscarPorId(@PathVariable UUID id,
                                                          @AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(tarefaService.buscarTarefaPorId(id, usuarioLogado.getIdUsuario()));
     }
-
 
     @GetMapping("/disciplina/{idDisciplina}")
     public ResponseEntity<List<TarefaResponseDTO>> listarPorDisciplina(@PathVariable UUID idDisciplina,
@@ -69,18 +65,15 @@ public class TarefaController {
         return ResponseEntity.ok(tarefaService.atualizarTarefa(id, dto, usuarioLogado.getIdUsuario()));
     }
 
-
     @PatchMapping("/{id}/concluir")
     public ResponseEntity<TarefaResponseDTO> concluir(@PathVariable UUID id, @AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(tarefaService.concluirTarefa(id, usuarioLogado.getIdUsuario()));
     }
 
-
     @PatchMapping("/{id}/reabrir")
     public ResponseEntity<TarefaResponseDTO> reabrir(@PathVariable UUID id, @AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(tarefaService.reabrirTarefa(id, usuarioLogado.getIdUsuario()));
     }
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable UUID id, @AuthenticationPrincipal Usuario usuarioLogado) {

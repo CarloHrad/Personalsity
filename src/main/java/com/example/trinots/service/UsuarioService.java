@@ -2,6 +2,7 @@ package com.example.trinots.service;
 
 
 import com.example.trinots.domain.Curso;
+import com.example.trinots.domain.Disciplina;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
 import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
@@ -13,12 +14,14 @@ import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.EmailJaCadastradoException;
 import com.example.trinots.repository.CursoRepository;
+import com.example.trinots.repository.DisciplinaRepository;
 import com.example.trinots.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -28,11 +31,15 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final CursoRepository cursoRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DisciplinaRepository disciplinaRepository;
+    private final DisciplinaService disciplinaService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, CursoRepository cursoRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, CursoRepository cursoRepository, PasswordEncoder passwordEncoder, DisciplinaRepository disciplinaRepository, DisciplinaService disciplinaService) {
         this.usuarioRepository = usuarioRepository;
         this.cursoRepository = cursoRepository;
         this.passwordEncoder = passwordEncoder;
+        this.disciplinaRepository = disciplinaRepository;
+        this.disciplinaService = disciplinaService;
     }
 
     public UsuarioResponseDTO criarUsuario(UsuarioRequestDTO dto) {
@@ -133,8 +140,11 @@ public class UsuarioService {
 
         usuario.setMediaAprovacao(dto.novaMedia());
         usuarioRepository.save(usuario);
-    }
 
+        // recalcula o status de todas as disciplinas do usuário, já que a nova
+        // média de aprovação pode reclassificar disciplinas já com nota lançada
+        disciplinaService.recalcularStatusDeTodasAsDisciplinas(idUsuarioLogado);
+    }
 
     public void desativarUsuario(UUID id) {
             Usuario usuario = usuarioRepository.findById(id)
@@ -142,6 +152,18 @@ public class UsuarioService {
 
             usuario.setAtivo(false);
             usuarioRepository.save(usuario);
+    }
+
+    public void ativarUsuario(UUID id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+
+        usuario.setAtivo(true);
+        usuarioRepository.save(usuario);
+    }
+
+    public void excluirConta(Usuario usuario) {
+        usuarioRepository.delete(usuario);
     }
 
     private UsuarioResponseDTO toResponseDTO(Usuario usuario) {

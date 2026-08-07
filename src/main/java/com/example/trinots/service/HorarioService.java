@@ -48,12 +48,10 @@ public class HorarioService {
         return toResponseDTO(salvo);
     }
 
-
     public HorarioResponseDTO buscarHorarioPorId(UUID id, UUID idUsuarioLogado) {
         Horario horario = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         return toResponseDTO(horario);
     }
-
 
     public List<HorarioResponseDTO> listarPorDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
         buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado); // garante que a disciplina é do usuário
@@ -63,13 +61,18 @@ public class HorarioService {
                 .toList();
     }
 
-
     public HorarioResponseDTO atualizarHorario(UUID id, HorarioRequestDTO dto, UUID idUsuarioLogado) {
         Horario horario = buscarEntidadeDoUsuario(id, idUsuarioLogado);
-        Disciplina disciplina = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
 
-        if (disciplina.getArquivada()) {
+        // valida a disciplina ATUAL do horário, não só a de destino
+        if (horario.getDisciplina().getArquivada()) {
             throw new DisciplinaArquivadaException("Não é possível editar horário de uma disciplina arquivada");
+        }
+
+        Disciplina disciplinaDestino = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
+
+        if (disciplinaDestino.getArquivada()) {
+            throw new DisciplinaArquivadaException("Não é possível mover horário para uma disciplina arquivada");
         }
 
         // exclui o próprio registro da checagem de conflito, senão ele bateria com ele mesmo
@@ -78,19 +81,16 @@ public class HorarioService {
         horario.setDiaSemana(dto.diaSemana());
         horario.setHoraInicio(dto.horaInicio());
         horario.setHoraFim(dto.horaFim());
-        horario.setDisciplina(disciplina);
+        horario.setDisciplina(disciplinaDestino);
 
         Horario atualizado = horarioRepository.save(horario);
         return toResponseDTO(atualizado);
     }
 
-
     public void deletarHorario(UUID id, UUID idUsuarioLogado) {
         Horario horario = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         horarioRepository.delete(horario);
     }
-
-
 
     private void validarSemConflito(DiaSemanaEnum diaSemana, LocalTime horaInicio, LocalTime horaFim,
                                     UUID idUsuarioLogado, UUID idHorarioIgnorar) {
@@ -107,19 +107,15 @@ public class HorarioService {
         }
     }
 
-
-
     private Disciplina buscarDisciplinaDoUsuario(UUID idDisciplina, UUID idUsuarioLogado) {
         return disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado)
                 .orElseThrow(() -> new EntityNotFoundException("Disciplina não encontrada"));
     }
 
-
     private Horario buscarEntidadeDoUsuario(UUID id, UUID idUsuarioLogado) {
         return horarioRepository.findByIdHoraAndDisciplinaUsuarioIdUsuario(id, idUsuarioLogado)
                 .orElseThrow(() -> new EntityNotFoundException("Horário não encontrado"));
     }
-
 
     private HorarioResponseDTO toResponseDTO(Horario horario) {
         return new HorarioResponseDTO(

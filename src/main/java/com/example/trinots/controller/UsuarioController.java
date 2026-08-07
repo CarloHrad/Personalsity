@@ -8,10 +8,12 @@ import com.example.trinots.dto.UsuarioDTO.NovaMediaDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
+import com.example.trinots.service.AuthService;
 import com.example.trinots.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,9 +60,10 @@ public class UsuarioController {
     public ResponseEntity<Double> buscarMediaAprovacao(@AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(usuarioService.buscarMediaAprovacao(usuarioLogado.getIdUsuario()));
     }
-
+    
+    //Consertar
     @PutMapping("/configuracoes/media")
-    public ResponseEntity<Void> alterarMediaAprovacao(@AuthenticationPrincipal Usuario usuarioLogado, @Valid NovaMediaDTO novaMedia) {
+    public ResponseEntity<Void> alterarMediaAprovacao(@AuthenticationPrincipal Usuario usuarioLogado, @Valid @RequestBody NovaMediaDTO novaMedia) {
         usuarioService.alterarMediaAprovacao(usuarioLogado.getIdUsuario(), novaMedia);
         return ResponseEntity.noContent().build();
     }
@@ -68,6 +71,19 @@ public class UsuarioController {
     @PatchMapping("/me/desativar")
     public ResponseEntity<Void> desativar(@AuthenticationPrincipal Usuario usuarioLogado) {
         usuarioService.desativarUsuario(usuarioLogado.getIdUsuario());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/me/ativar")
+    public ResponseEntity<Void> ativar(@AuthenticationPrincipal Usuario usuarioLogado) {
+        usuarioService.ativarUsuario(usuarioLogado.getIdUsuario());
+        return ResponseEntity.noContent().build();
+    }
+
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> excluirConta(@AuthenticationPrincipal Usuario usuarioLogado) {
+        usuarioService.excluirConta(usuarioLogado);
         return ResponseEntity.noContent().build();
     }
 }
