@@ -28,7 +28,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/usuarios").permitAll()
-                        .requestMatchers("/auth/login", "/auth/esqueci-senha", "/auth/redefinir-senha").permitAll()
+                        .requestMatchers("/auth/login", "/auth/esqueci-senha", "/auth/redefinir-senha", "/h2-console").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

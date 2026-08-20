@@ -45,7 +45,7 @@ public class AuthService {
         }
 
         String token = accessTokenService.generateToken(usuario);
-        return new LoginResponseDTO(token, usuario.getIdUsuario(), usuario.getNome());
+        return new LoginResponseDTO("Bearer " + token, usuario.getIdUsuario(), usuario.getNome());
     }
 
 
