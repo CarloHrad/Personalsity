@@ -14,7 +14,6 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -25,10 +24,13 @@ public class TarefaService {
 
     private final TarefaRepository tarefaRepository;
     private final DisciplinaRepository disciplinaRepository;
+    private final FusoHorarioService fusoHorarioService;
 
-    public TarefaService(TarefaRepository tarefaRepository, DisciplinaRepository disciplinaRepository) {
+    public TarefaService(TarefaRepository tarefaRepository, DisciplinaRepository disciplinaRepository,
+                         FusoHorarioService fusoHorarioService) {
         this.tarefaRepository = tarefaRepository;
         this.disciplinaRepository = disciplinaRepository;
+        this.fusoHorarioService = fusoHorarioService;
     }
 
     public TarefaResponseDTO criarTarefa(TarefaRequestDTO dto, UUID idUsuarioLogado) {
@@ -42,6 +44,7 @@ public class TarefaService {
         tarefa.setNomeTarefa(dto.nomeTarefa());
         tarefa.setDescricao(dto.descricao());
         tarefa.setDataEntrega(dto.dataEntrega());
+        tarefa.setHoraEntrega(dto.horaEntrega());
         tarefa.setConcluida(false);
         tarefa.setDataConclusao(null);
         tarefa.setDisciplina(disciplina);
@@ -65,10 +68,11 @@ public class TarefaService {
 
     public List<TarefaResponseDTO> listarPorDisciplinaStatus(UUID idDisciplina, StatusTarefaEnum status, UUID idUsuarioLogado) {
         buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado);
+        LocalDateTime agora = fusoHorarioService.agora();
 
         return tarefaRepository.findByDisciplinaIdDisciplina(idDisciplina)
                 .stream()
-                .filter(t -> calcularStatus(t) == status)
+                .filter(t -> calcularStatus(t, agora) == status)
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -78,8 +82,10 @@ public class TarefaService {
                 ? tarefaRepository.findByDisciplinaUsuarioIdUsuarioAndDisciplinaPeriodo(idUsuarioLogado, periodo)
                 : tarefaRepository.findByDisciplinaUsuarioIdUsuario(idUsuarioLogado);
 
+        LocalDateTime agora = fusoHorarioService.agora();
+
         return tarefas.stream()
-                .filter(t -> calcularStatus(t) == status)
+                .filter(t -> calcularStatus(t, agora) == status)
                 .map(this::toResponseDTO)
                 .toList();
     }
@@ -87,7 +93,6 @@ public class TarefaService {
     public TarefaResponseDTO atualizarTarefa(UUID id, TarefaRequestDTO dto, UUID idUsuarioLogado) {
         Tarefa tarefa = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
-        // valida a disciplina ATUAL da tarefa, não só a de destino
         if (tarefa.getDisciplina().getArquivada()) {
             throw new DisciplinaArquivadaException("Não é possível editar tarefa de uma disciplina arquivada");
         }
@@ -105,6 +110,7 @@ public class TarefaService {
         tarefa.setNomeTarefa(dto.nomeTarefa());
         tarefa.setDescricao(dto.descricao());
         tarefa.setDataEntrega(dto.dataEntrega());
+        tarefa.setHoraEntrega(dto.horaEntrega());
         tarefa.setDisciplina(disciplinaDestino);
 
         Tarefa atualizada = tarefaRepository.save(tarefa);
@@ -119,7 +125,7 @@ public class TarefaService {
         }
 
         tarefa.setConcluida(true);
-        tarefa.setDataConclusao(LocalDateTime.now());
+        tarefa.setDataConclusao(fusoHorarioService.agora());
 
         Tarefa atualizada = tarefaRepository.save(tarefa);
         return toResponseDTO(atualizada);
@@ -155,15 +161,23 @@ public class TarefaService {
     }
 
     private StatusTarefaEnum calcularStatus(Tarefa tarefa) {
+        return calcularStatus(tarefa, fusoHorarioService.agora());
+    }
+
+    /**
+     * "agora" está no fuso do aparelho do usuário. Sem hora de entrega, a tarefa só atrasa depois do
+     * fim do dia de entrega; com hora, atrasa assim que o horário passa.
+     */
+    private StatusTarefaEnum calcularStatus(Tarefa tarefa, LocalDateTime agora) {
         if (Boolean.TRUE.equals(tarefa.getConcluida())) {
             return StatusTarefaEnum.CONCLUIDA;
         }
 
-        if (tarefa.getDataEntrega().isBefore(LocalDate.now())) {
-            return StatusTarefaEnum.ATRASADA;
-        }
+        boolean atrasada = (tarefa.getHoraEntrega() == null)
+                ? tarefa.getDataEntrega().isBefore(agora.toLocalDate())
+                : LocalDateTime.of(tarefa.getDataEntrega(), tarefa.getHoraEntrega()).isBefore(agora);
 
-        return StatusTarefaEnum.PENDENTE;
+        return atrasada ? StatusTarefaEnum.ATRASADA : StatusTarefaEnum.PENDENTE;
     }
 
     private TarefaResponseDTO toResponseDTO(Tarefa tarefa) {
@@ -172,6 +186,7 @@ public class TarefaService {
                 tarefa.getNomeTarefa(),
                 tarefa.getDescricao(),
                 tarefa.getDataEntrega(),
+                tarefa.getHoraEntrega(),
                 tarefa.getDataConclusao(),
                 calcularStatus(tarefa),
                 tarefa.getDisciplina().getNomeDisciplina()

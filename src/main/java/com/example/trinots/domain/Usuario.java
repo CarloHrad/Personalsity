@@ -1,11 +1,9 @@
 package com.example.trinots.domain;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -23,6 +21,7 @@ public class Usuario {
 
     private String sobrenome;
 
+    @Column(unique = true, nullable = false)
     private String email;
 
     private String senha;
@@ -33,7 +32,9 @@ public class Usuario {
 
     private Integer semestreAtual;
 
+    private Double mediaAprovacao = 6.0;
+
     private boolean ativo = true;
 
-    private Double mediaAprovacao = 6.0;
+    private boolean emailVerificado = false;
 }

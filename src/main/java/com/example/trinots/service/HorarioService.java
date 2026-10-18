@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -36,7 +37,7 @@ public class HorarioService {
             throw new DisciplinaArquivadaException("Não é possível adicionar horário a uma disciplina arquivada");
         }
 
-        validarSemConflito(dto.diaSemana(), dto.horaInicio(), dto.horaFim(), idUsuarioLogado, null);
+        validarSemConflito(dto.diaSemana(), dto.horaInicio(), dto.horaFim(), idUsuarioLogado, disciplina.getPeriodo(), null);
 
         Horario horario = new Horario();
         horario.setDiaSemana(dto.diaSemana());
@@ -54,7 +55,7 @@ public class HorarioService {
     }
 
     public List<HorarioResponseDTO> listarPorDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
-        buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado); // garante que a disciplina é do usuário
+        buscarDisciplinaDoUsuario(idDisciplina, idUsuarioLogado);
         return horarioRepository.findByDisciplinaIdDisciplina(idDisciplina)
                 .stream()
                 .map(this::toResponseDTO)
@@ -64,7 +65,6 @@ public class HorarioService {
     public HorarioResponseDTO atualizarHorario(UUID id, HorarioRequestDTO dto, UUID idUsuarioLogado) {
         Horario horario = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
-        // valida a disciplina ATUAL do horário, não só a de destino
         if (horario.getDisciplina().getArquivada()) {
             throw new DisciplinaArquivadaException("Não é possível editar horário de uma disciplina arquivada");
         }
@@ -75,8 +75,7 @@ public class HorarioService {
             throw new DisciplinaArquivadaException("Não é possível mover horário para uma disciplina arquivada");
         }
 
-        // exclui o próprio registro da checagem de conflito, senão ele bateria com ele mesmo
-        validarSemConflito(dto.diaSemana(), dto.horaInicio(), dto.horaFim(), idUsuarioLogado, id);
+        validarSemConflito(dto.diaSemana(), dto.horaInicio(), dto.horaFim(), idUsuarioLogado, disciplinaDestino.getPeriodo(), id);
 
         horario.setDiaSemana(dto.diaSemana());
         horario.setHoraInicio(dto.horaInicio());
@@ -92,12 +91,24 @@ public class HorarioService {
         horarioRepository.delete(horario);
     }
 
+    /**
+     * Revalida todos os horários de uma disciplina contra as demais disciplinas ativas do mesmo período.
+     * Usado ao desarquivar, já que horários de disciplinas arquivadas não entram na checagem de conflito.
+     */
+    public void validarHorariosDaDisciplina(Disciplina disciplina, UUID idUsuarioLogado) {
+        for (Horario horario : horarioRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina())) {
+            validarSemConflito(horario.getDiaSemana(), horario.getHoraInicio(), horario.getHoraFim(),
+                    idUsuarioLogado, disciplina.getPeriodo(), horario.getIdHora());
+        }
+    }
+
     private void validarSemConflito(DiaSemanaEnum diaSemana, LocalTime horaInicio, LocalTime horaFim,
-                                    UUID idUsuarioLogado, UUID idHorarioIgnorar) {
+                                    UUID idUsuarioLogado, Integer periodo, UUID idHorarioIgnorar) {
         List<Horario> horariosDoMesmoDia = horarioRepository
                 .findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, diaSemana);
 
         boolean temConflito = horariosDoMesmoDia.stream()
+                .filter(h -> Objects.equals(h.getDisciplina().getPeriodo(), periodo))
                 .filter(h -> !h.getIdHora().equals(idHorarioIgnorar))
                 .anyMatch(h -> horaInicio.isBefore(h.getHoraFim()) && horaFim.isAfter(h.getHoraInicio()));
 

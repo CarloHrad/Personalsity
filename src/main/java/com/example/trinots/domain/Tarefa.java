@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -21,9 +22,13 @@ public class Tarefa {
 
     private String nomeTarefa;
 
+    @Column(length = 500)
     private String descricao;
 
     private LocalDate dataEntrega;
+
+    @Column(name = "hora_entrega")
+    private LocalTime horaEntrega;
 
     @Column(name = "data_conclusao")
     private LocalDateTime dataConclusao;

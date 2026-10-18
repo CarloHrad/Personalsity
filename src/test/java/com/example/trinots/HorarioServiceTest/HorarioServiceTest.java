@@ -1,6 +1,7 @@
 package com.example.trinots.HorarioServiceTest;
 
-import com.example.trinots.domain.*;
+import com.example.trinots.domain.Disciplina;
+import com.example.trinots.domain.Horario;
 import com.example.trinots.domain.enums.DiaSemanaEnum;
 import com.example.trinots.dto.HorarioDTO.HorarioRequestDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioResponseDTO;
@@ -122,11 +123,11 @@ class HorarioServiceTest {
 
             @ParameterizedTest(name = "existente=[{0}-{1}] novo=[{2}-{3}] deve conflitar")
             @CsvSource({
-                    "08:00, 10:00, 09:00, 11:00",   // sobreposição parcial (novo começa dentro do existente)
-                    "08:00, 10:00, 07:00, 09:00",   // sobreposição parcial (novo termina dentro do existente)
-                    "08:00, 10:00, 08:30, 09:30",   // novo totalmente contido no existente
-                    "08:00, 10:00, 07:00, 11:00",   // existente totalmente contido no novo
-                    "08:00, 10:00, 08:00, 10:00",   // exatamente igual
+                    "08:00, 10:00, 09:00, 11:00",
+                    "08:00, 10:00, 07:00, 09:00",
+                    "08:00, 10:00, 08:30, 09:30",
+                    "08:00, 10:00, 07:00, 11:00",
+                    "08:00, 10:00, 08:00, 10:00",
             })
             @DisplayName("deve lançar HorarioConflitanteException em qualquer tipo de sobreposição")
             void deveLancarExceptionEmSobreposicao(String inicioExistente, String fimExistente,
@@ -150,9 +151,9 @@ class HorarioServiceTest {
 
             @ParameterizedTest(name = "existente=[{0}-{1}] novo=[{2}-{3}] NÃO deve conflitar")
             @CsvSource({
-                    "08:00, 10:00, 10:00, 12:00",   // adjacente — termina exatamente quando o outro começa
-                    "08:00, 10:00, 06:00, 08:00",   // adjacente — começa exatamente quando o outro termina
-                    "08:00, 10:00, 11:00, 12:00",   // totalmente separado, sem intersecção
+                    "08:00, 10:00, 10:00, 12:00",
+                    "08:00, 10:00, 06:00, 08:00",
+                    "08:00, 10:00, 11:00, 12:00",
             })
             @DisplayName("não deve conflitar quando horários são adjacentes ou não se sobrepõem")
             void naoDeveConflitarQuandoAdjacenteOuSeparado(String inicioExistente, String fimExistente,
@@ -182,7 +183,6 @@ class HorarioServiceTest {
 
                 when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                         .thenReturn(Optional.of(disciplinaExistente));
-                // repository já filtraria por TERCA, então simplesmente não retorna nada (SEGUNDA não é TERCA)
                 when(horarioRepository.findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, DiaSemanaEnum.TERCA))
                         .thenReturn(List.of());
                 when(horarioRepository.save(any(Horario.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -204,14 +204,12 @@ class HorarioServiceTest {
             Horario horarioExistente = criarHorarioExistente(idHorario, DiaSemanaEnum.SEGUNDA,
                     LocalTime.of(8, 0), LocalTime.of(10, 0));
 
-            // atualizando só 30 min a mais no fim — mesmo intervalo base, não deveria conflitar com ele mesmo
             HorarioRequestDTO dto = criarDto(DiaSemanaEnum.SEGUNDA, LocalTime.of(8, 0), LocalTime.of(10, 30));
 
             when(horarioRepository.findByIdHoraAndDisciplinaUsuarioIdUsuario(idHorario, idUsuarioLogado))
                     .thenReturn(Optional.of(horarioExistente));
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
-            // a query retorna o próprio horário (ele já existe no banco) — o service precisa filtrar ele mesmo
             when(horarioRepository.findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, DiaSemanaEnum.SEGUNDA))
                     .thenReturn(List.of(horarioExistente));
             when(horarioRepository.save(any(Horario.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -232,7 +230,6 @@ class HorarioServiceTest {
             Horario outroHorario = criarHorarioExistente(idOutroHorario, DiaSemanaEnum.SEGUNDA,
                     LocalTime.of(14, 0), LocalTime.of(16, 0));
 
-            // tentando mover o horário editando pra dentro do intervalo do outro
             HorarioRequestDTO dto = criarDto(DiaSemanaEnum.SEGUNDA, LocalTime.of(15, 0), LocalTime.of(17, 0));
 
             when(horarioRepository.findByIdHoraAndDisciplinaUsuarioIdUsuario(idHorarioEditando, idUsuarioLogado))
@@ -337,7 +334,6 @@ class HorarioServiceTest {
                 disciplinaArquivada.setIdDisciplina(UUID.randomUUID());
                 disciplinaArquivada.setArquivada(true);
 
-                // horário antigo, de uma disciplina já arquivada, no mesmo intervalo que vamos tentar cadastrar
                 Horario horarioAntigo = criarHorarioExistente(UUID.randomUUID(), DiaSemanaEnum.SEGUNDA,
                         LocalTime.of(8, 0), LocalTime.of(10, 0));
                 horarioAntigo.setDisciplina(disciplinaArquivada);
@@ -345,9 +341,7 @@ class HorarioServiceTest {
                 HorarioRequestDTO dto = criarDto(DiaSemanaEnum.SEGUNDA, LocalTime.of(8, 0), LocalTime.of(10, 0));
 
                 when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
-                        .thenReturn(Optional.of(disciplinaExistente)); // disciplina NOVA, ativa
-                // a query já filtra arquivadas=false no banco de verdade — aqui simulamos retornando lista vazia,
-                // já que o horário da disciplina arquivada não deveria vir nesse resultado
+                        .thenReturn(Optional.of(disciplinaExistente));
                 when(horarioRepository.findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, DiaSemanaEnum.SEGUNDA))
                         .thenReturn(List.of());
                 when(horarioRepository.save(any(Horario.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -359,17 +353,70 @@ class HorarioServiceTest {
             }
 
             @Test
-            @DisplayName("deve continuar conflitando com horário de disciplina ATIVA, mesmo com outras arquivadas no mesmo dia")
-            void deveContinuarConflitandoComDisciplinaAtiva() {
-                Horario horarioAtivo = criarHorarioExistente(UUID.randomUUID(), DiaSemanaEnum.SEGUNDA,
-                        LocalTime.of(8, 0), LocalTime.of(10, 0)); // pertence a disciplinaExistente, que está ativa
+            @DisplayName("não deve conflitar com horário de disciplina ativa de OUTRO período")
+            void naoDeveConflitarComOutroPeriodo() {
+                disciplinaExistente.setPeriodo(2);
+
+                Disciplina disciplinaDoPeriodoAnterior = new Disciplina();
+                disciplinaDoPeriodoAnterior.setIdDisciplina(UUID.randomUUID());
+                disciplinaDoPeriodoAnterior.setPeriodo(1);
+                disciplinaDoPeriodoAnterior.setArquivada(false);
+
+                Horario horarioDoPeriodoAnterior = criarHorarioExistente(UUID.randomUUID(), DiaSemanaEnum.SEGUNDA,
+                        LocalTime.of(8, 0), LocalTime.of(10, 0));
+                horarioDoPeriodoAnterior.setDisciplina(disciplinaDoPeriodoAnterior);
+
+                HorarioRequestDTO dto = criarDto(DiaSemanaEnum.SEGUNDA, LocalTime.of(8, 0), LocalTime.of(10, 0));
+
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
+                when(horarioRepository.findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, DiaSemanaEnum.SEGUNDA))
+                        .thenReturn(List.of(horarioDoPeriodoAnterior));
+                when(horarioRepository.save(any(Horario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                assertThatCode(() -> horarioService.criarHorario(dto, idUsuarioLogado))
+                        .doesNotThrowAnyException();
+
+                verify(horarioRepository).save(any(Horario.class));
+            }
+
+            @Test
+            @DisplayName("deve conflitar com horário de disciplina ativa do MESMO período")
+            void deveConflitarComMesmoPeriodo() {
+                disciplinaExistente.setPeriodo(2);
+
+                Disciplina outraDisciplinaDoMesmoPeriodo = new Disciplina();
+                outraDisciplinaDoMesmoPeriodo.setIdDisciplina(UUID.randomUUID());
+                outraDisciplinaDoMesmoPeriodo.setPeriodo(2);
+                outraDisciplinaDoMesmoPeriodo.setArquivada(false);
+
+                Horario horarioDoMesmoPeriodo = criarHorarioExistente(UUID.randomUUID(), DiaSemanaEnum.SEGUNDA,
+                        LocalTime.of(8, 0), LocalTime.of(10, 0));
+                horarioDoMesmoPeriodo.setDisciplina(outraDisciplinaDoMesmoPeriodo);
 
                 HorarioRequestDTO dto = criarDto(DiaSemanaEnum.SEGUNDA, LocalTime.of(9, 0), LocalTime.of(11, 0));
 
                 when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                         .thenReturn(Optional.of(disciplinaExistente));
-                // a query já vem filtrada por arquivada=false no banco real — como disciplinaExistente está ativa,
-                // o horarioAtivo aparece normalmente no resultado
+                when(horarioRepository.findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, DiaSemanaEnum.SEGUNDA))
+                        .thenReturn(List.of(horarioDoMesmoPeriodo));
+
+                assertThatThrownBy(() -> horarioService.criarHorario(dto, idUsuarioLogado))
+                        .isInstanceOf(HorarioConflitanteException.class);
+
+                verify(horarioRepository, never()).save(any());
+            }
+
+            @Test
+            @DisplayName("deve continuar conflitando com horário de disciplina ATIVA, mesmo com outras arquivadas no mesmo dia")
+            void deveContinuarConflitandoComDisciplinaAtiva() {
+                Horario horarioAtivo = criarHorarioExistente(UUID.randomUUID(), DiaSemanaEnum.SEGUNDA,
+                        LocalTime.of(8, 0), LocalTime.of(10, 0));
+
+                HorarioRequestDTO dto = criarDto(DiaSemanaEnum.SEGUNDA, LocalTime.of(9, 0), LocalTime.of(11, 0));
+
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
                 when(horarioRepository.findByDisciplinaUsuarioIdUsuarioAndDiaSemanaAndDisciplinaArquivadaFalse(idUsuarioLogado, DiaSemanaEnum.SEGUNDA))
                         .thenReturn(List.of(horarioAtivo));
 

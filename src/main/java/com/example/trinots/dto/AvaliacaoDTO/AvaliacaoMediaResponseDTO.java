@@ -8,5 +8,6 @@ public record AvaliacaoMediaResponseDTO(
         Double notaObtida,
         Double notaMaxima,
         Double peso,
-        Boolean concluida
+        Boolean concluida,
+        Double notaNormalizada
 ) {}

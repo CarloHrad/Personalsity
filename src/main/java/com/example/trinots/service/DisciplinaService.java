@@ -5,7 +5,6 @@ import com.example.trinots.domain.Disciplina;
 import com.example.trinots.domain.Tarefa;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
-import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoMediaResponseDTO;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoResponseDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
@@ -18,7 +17,6 @@ import com.example.trinots.exception.exceptions.*;
 import com.example.trinots.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -110,10 +108,12 @@ public class DisciplinaService {
             throw new DisciplinaArquivadaException("Não é possível editar uma disciplina arquivada");
         }
 
+        if (disciplinaRepository.existsByNomeDisciplinaAndUsuarioIdUsuarioAndIdDisciplinaNot(dto.nomeDisciplina(), idUsuarioLogado, id)) {
+            throw new DisciplinaJaCadastradaException("Você já tem uma disciplina chamada '" + dto.nomeDisciplina() + "'");
+        }
+
         boolean temAvaliacoes = !avaliacaoRepository.findByDisciplinaIdDisciplina(id).isEmpty();
 
-        // só valida imutabilidade se o cliente REALMENTE tentou mudar o tipoMedia
-        // (dto.tipoMedia() == null significa "não alterar", não "limpar o campo")
         boolean tentandoAlterarTipoMedia = dto.tipoMedia() != null
                 && !Objects.equals(disciplina.getTipoMedia(), dto.tipoMedia());
 
@@ -129,7 +129,6 @@ public class DisciplinaService {
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
 
-        // só atualiza tipoMedia se veio preenchido no DTO — nunca apaga um valor já definido
         if (dto.tipoMedia() != null && !temAvaliacoes) {
             disciplina.setTipoMedia(dto.tipoMedia());
         }
@@ -141,42 +140,41 @@ public class DisciplinaService {
     public Double calcularMedia(UUID idDisciplina, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
-        return calcularMedia(disciplina, avaliacoes);
+        return calcularResultado(disciplina, avaliacoes).mediaAtual();
     }
 
-    private Double calcularMedia(Disciplina disciplina, List<Avaliacao> avaliacoes) {
-        if (disciplina.getTipoMedia() == null) {
-            return null;
+    /**
+     * Calcula média atual, projeção e risco. Notas são normalizadas para 0–10 (nota / notaMaxima * 10);
+     * avaliações pendentes ficam fora da média atual e só entram (como zero) na projeção pessimista.
+     */
+    private MediaCalculator.Resultado calcularResultado(Disciplina disciplina, List<Avaliacao> avaliacoes) {
+        List<MediaCalculator.Item> itens = avaliacoes.stream()
+                .map(a -> new MediaCalculator.Item(
+                        a.getNotaObtida(), a.getNotaMaxima(), a.getPeso(), Boolean.TRUE.equals(a.getConcluida())))
+                .toList();
+
+        return MediaCalculator.calcular(disciplina.getTipoMedia(), itens, disciplina.getUsuario().getMediaAprovacao());
+    }
+
+    /**
+     * O status é fechado pela média somente quando todas as avaliações cadastradas já foram concluídas.
+     * Enquanto houver avaliação pendente, a disciplina segue EM_PROGRESSO.
+     * RECUPERACAO ainda não é atribuída automaticamente (limite de recuperação não definido).
+     */
+    private StatusDisciplinaEnum definirStatus(Disciplina disciplina, MediaCalculator.Resultado resultado) {
+        if (resultado.mediaAtual() == null || !resultado.todasConcluidas()) {
+            return StatusDisciplinaEnum.EM_PROGRESSO;
         }
-
-        avaliacoes = avaliacoes.stream().filter(Avaliacao::getConcluida).toList();
-
-        if (avaliacoes.isEmpty()) {
-            return null;
-        }
-
-        if (disciplina.getTipoMedia() == TipoMediaEnum.SIMPLES) {
-            return avaliacoes.stream()
-                    .mapToDouble(Avaliacao::getNotaObtida)
-                    .average()
-                    .orElse(0.0);
-        }
-
-        double somaNotasPonderadas = avaliacoes.stream()
-                .mapToDouble(a -> a.getNotaObtida() * a.getPeso())
-                .sum();
-
-        double somaPesos = avaliacoes.stream()
-                .mapToDouble(Avaliacao::getPeso)
-                .sum();
-
-        return somaPesos == 0 ? 0.0 : somaNotasPonderadas / somaPesos;
+        return resultado.mediaAtual() >= disciplina.getUsuario().getMediaAprovacao()
+                ? StatusDisciplinaEnum.APROVADO
+                : StatusDisciplinaEnum.REPROVADO;
     }
 
     public MediaResponseDTO buscarMedia(UUID idDisciplina, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
-        Double media = calcularMedia(disciplina, avaliacoes);
+        MediaCalculator.Resultado resultado = calcularResultado(disciplina, avaliacoes);
+        Double media = resultado.mediaAtual();
 
         Double faltaParaAprovacao = (media != null)
                 ? Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media)
@@ -189,25 +187,24 @@ public class DisciplinaService {
                 media,
                 disciplina.getUsuario().getMediaAprovacao(),
                 faltaParaAprovacao,
-                avaliacoesDTO
+                avaliacoesDTO,
+                resultado.projecaoPessimista(),
+                resultado.notaNecessariaRestantes(),
+                resultado.emRiscoReprovacao()
         );
     }
 
     public DisciplinaResponseDTO atualizarStatusDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
-        Double media = calcularMedia(disciplina, avaliacoes);
 
-        if (media == null) {
-            disciplina.setStatus(StatusDisciplinaEnum.EM_PROGRESSO);
-        } else if (media >= disciplina.getUsuario().getMediaAprovacao()) {
-            disciplina.setStatus(StatusDisciplinaEnum.APROVADO);
-        } else {
-            disciplina.setStatus(StatusDisciplinaEnum.REPROVADO);
+        if (Boolean.TRUE.equals(disciplina.getArquivada())) {
+            return toResponseDTO(disciplina, avaliacoes);
         }
 
+        disciplina.setStatus(definirStatus(disciplina, calcularResultado(disciplina, avaliacoes)));
+
         Disciplina atualizada = disciplinaRepository.save(disciplina);
-        // reaproveita a mesma lista de avaliações já carregada, evita 2ª query
         return toResponseDTO(atualizada, avaliacoes);
     }
 
@@ -218,6 +215,24 @@ public class DisciplinaService {
         disciplinaRepository.save(disciplina);
     }
 
+    /** Desfaz o arquivamento: o status volta a ser derivado da média e os horários são revalidados. */
+    public DisciplinaResponseDTO desarquivarDisciplina(UUID idDisciplina, UUID idUsuarioLogado) {
+        Disciplina disciplina = buscarEntidadeDoUsuario(idDisciplina, idUsuarioLogado);
+
+        if (!Boolean.TRUE.equals(disciplina.getArquivada())) {
+            throw new DisciplinaNaoArquivadaException("A disciplina não está arquivada");
+        }
+
+        horarioService.validarHorariosDaDisciplina(disciplina, idUsuarioLogado);
+
+        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina);
+        disciplina.setArquivada(false);
+        disciplina.setStatus(definirStatus(disciplina, calcularResultado(disciplina, avaliacoes)));
+
+        Disciplina atualizada = disciplinaRepository.save(disciplina);
+        return toResponseDTO(atualizada, avaliacoes);
+    }
+
     public void deletarDisciplina(UUID id, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
@@ -226,7 +241,7 @@ public class DisciplinaService {
 
         if (temAvaliacoes || temTarefas) {
             throw new DisciplinaComDadosVinculadosException(
-                "Não é possível excluir uma disciplina com avaliações ou tarefas vinculadas. Arquive-a em vez disso.");
+                    "Não é possível excluir uma disciplina com avaliações ou tarefas vinculadas. Arquive-a em vez disso.");
         }
 
         disciplinaRepository.delete(disciplina);
@@ -240,6 +255,9 @@ public class DisciplinaService {
     public void recalcularStatusDeTodasAsDisciplinas(UUID idUsuarioLogado) {
         List<Disciplina> disciplinas = disciplinaRepository.findByUsuarioIdUsuario(idUsuarioLogado);
         for (Disciplina disciplina : disciplinas) {
+            if (Boolean.TRUE.equals(disciplina.getArquivada())) {
+                continue;
+            }
             atualizarStatusDisciplina(disciplina.getIdDisciplina(), idUsuarioLogado);
         }
     }
@@ -251,7 +269,10 @@ public class DisciplinaService {
                 avaliacao.getNotaObtida(),
                 avaliacao.getNotaMaxima(),
                 avaliacao.getPeso(),
-                avaliacao.getConcluida()
+                avaliacao.getConcluida(),
+                MediaCalculator.notaNormalizada(new MediaCalculator.Item(
+                        avaliacao.getNotaObtida(), avaliacao.getNotaMaxima(), avaliacao.getPeso(),
+                        Boolean.TRUE.equals(avaliacao.getConcluida())))
         );
     }
 
@@ -287,12 +308,14 @@ public class DisciplinaService {
                 .toList();
     }
 
-    // versão usada quando avaliações E horários já vêm prontos (batch, evita N+1)
     private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina, List<Avaliacao> avaliacoes, List<HorarioResponseDTO> horariosDTO) {
-        Double media = calcularMedia(disciplina, avaliacoes);
+        MediaCalculator.Resultado resultado = calcularResultado(disciplina, avaliacoes);
+        Double media = resultado.mediaAtual();
         Double faltaParaAprovacao = (media != null)
                 ? Math.max(0.0, disciplina.getUsuario().getMediaAprovacao() - media)
                 : null;
+
+        boolean arquivada = Boolean.TRUE.equals(disciplina.getArquivada());
 
         return new DisciplinaResponseDTO(
                 disciplina.getIdDisciplina(),
@@ -307,11 +330,13 @@ public class DisciplinaService {
                 media,
                 faltaParaAprovacao,
                 disciplina.getArquivada(),
-                horariosDTO
+                horariosDTO,
+                resultado.projecaoPessimista(),
+                resultado.notaNecessariaRestantes(),
+                !arquivada && resultado.emRiscoReprovacao()
         );
     }
 
-    // versão usada quando só avaliações vêm prontas (ex: atualizarStatusDisciplina), busca horário sozinho
     private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina, List<Avaliacao> avaliacoes) {
         List<HorarioResponseDTO> horariosDTO = horarioRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina())
                 .stream()
@@ -321,7 +346,6 @@ public class DisciplinaService {
         return toResponseDTO(disciplina, avaliacoes, horariosDTO);
     }
 
-    // versão usada quando nada vem pronto (ex: criarDisciplina, buscarDisciplinaPorId), busca tudo sozinho
     private DisciplinaResponseDTO toResponseDTO(Disciplina disciplina) {
         List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(disciplina.getIdDisciplina());
         return toResponseDTO(disciplina, avaliacoes);

@@ -14,13 +14,15 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "disciplina")
+@Table(name = "disciplina", uniqueConstraints = @UniqueConstraint(
+        name = "uk_disciplina_usuario_nome", columnNames = {"id_usuario", "nome_disciplina"}))
 public class Disciplina {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID idDisciplina;
 
+    @Column(name = "nome_disciplina")
     private String nomeDisciplina;
 
     private Integer periodo;

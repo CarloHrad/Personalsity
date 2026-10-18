@@ -21,6 +21,7 @@ public class Avaliacao {
 
     private String nomeAvaliacao;
 
+    @Column(length = 500)
     private String descricao;
 
     private LocalDate dataAvaliacao;

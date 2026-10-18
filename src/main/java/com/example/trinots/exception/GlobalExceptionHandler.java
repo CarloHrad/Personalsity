@@ -1,7 +1,5 @@
 package com.example.trinots.exception;
 
-import com.example.trinots.domain.enums.StatusDisciplinaEnum;
-import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.ErrorValidationResponseDTO;
 import com.example.trinots.exception.exceptions.NegocioException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -9,13 +7,18 @@ import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
@@ -85,6 +88,38 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponseDTO("400", mensagem, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponseDTO> handleParametroAusente(MissingServletRequestParameterException ex) {
+        String mensagem = "Parâmetro '" + ex.getParameterName() + "' é obrigatório";
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDTO("400", mensagem, LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMetodoNaoSuportado(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new ErrorResponseDTO("405", "Método HTTP não suportado para esta rota", LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMediaTypeNaoSuportado(HttpMediaTypeNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(new ErrorResponseDTO("415", "Tipo de conteúdo não suportado. Envie application/json", LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleRotaInexistente(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponseDTO("404", "Rota não encontrada", LocalDateTime.now()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleIntegridade(DataIntegrityViolationException ex) {
+        log.warn("Violação de integridade de dados", ex);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponseDTO("409", "A operação conflita com dados já existentes", LocalDateTime.now()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

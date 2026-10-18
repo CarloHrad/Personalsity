@@ -1,12 +1,16 @@
 package com.example.trinots.TarefaServiceTest;
 
-import com.example.trinots.domain.*;
+import com.example.trinots.domain.Disciplina;
+import com.example.trinots.domain.Tarefa;
 import com.example.trinots.domain.enums.StatusTarefaEnum;
 import com.example.trinots.dto.TarefaDTO.TarefaRequestDTO;
 import com.example.trinots.dto.TarefaDTO.TarefaResponseDTO;
-import com.example.trinots.exception.exceptions.*;
+import com.example.trinots.exception.exceptions.DisciplinaArquivadaException;
+import com.example.trinots.exception.exceptions.TarefaJaConcluidaException;
+import com.example.trinots.exception.exceptions.TarefaNaoConcluidaException;
 import com.example.trinots.repository.DisciplinaRepository;
 import com.example.trinots.repository.TarefaRepository;
+import com.example.trinots.service.FusoHorarioService;
 import com.example.trinots.service.TarefaService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,15 +18,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -34,6 +41,7 @@ class TarefaServiceTest {
     private DisciplinaRepository disciplinaRepository;
     private TarefaService tarefaService;
 
+    private FusoHorarioService fusoHorarioService;
     private UUID idUsuarioLogado;
     private UUID idDisciplina;
     private Disciplina disciplinaExistente;
@@ -44,7 +52,9 @@ class TarefaServiceTest {
     void setUp() {
         tarefaRepository = mock(TarefaRepository.class);
         disciplinaRepository = mock(DisciplinaRepository.class);
-        tarefaService = new TarefaService(tarefaRepository, disciplinaRepository);
+        fusoHorarioService = mock(FusoHorarioService.class);
+        lenient().when(fusoHorarioService.agora()).thenAnswer(inv -> LocalDateTime.now());
+        tarefaService = new TarefaService(tarefaRepository, disciplinaRepository, fusoHorarioService);
 
         idUsuarioLogado = UUID.randomUUID();
         idDisciplina = UUID.randomUUID();
@@ -66,7 +76,7 @@ class TarefaServiceTest {
 
     private TarefaRequestDTO criarDtoValido() {
         return new TarefaRequestDTO("Lista 1", "Exercícios do capítulo 3",
-                LocalDate.now().plusDays(5), idDisciplina);
+                LocalDate.now().plusDays(5), null, idDisciplina);
     }
 
     @Nested
@@ -224,7 +234,7 @@ class TarefaServiceTest {
         @DisplayName("deve atualizar tarefa com sucesso quando não está concluída nem a disciplina arquivada")
         void deveAtualizarComSucesso() {
             TarefaRequestDTO dto = new TarefaRequestDTO("Lista 2", "Nova descrição",
-                    LocalDate.now().plusDays(10), idDisciplina);
+                    LocalDate.now().plusDays(10), null, idDisciplina);
 
             when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
                     .thenReturn(Optional.of(tarefaExistente));
@@ -334,6 +344,76 @@ class TarefaServiceTest {
     }
 
     @Nested
+    @DisplayName("prazo com fuso e hora de entrega opcional (RN07)")
+    class PrazoEFuso {
+
+        private static final LocalDateTime AGORA = LocalDateTime.of(2026, 10, 12, 15, 0);
+
+        private TarefaResponseDTO buscarComAgora(LocalDate dataEntrega, LocalTime horaEntrega) {
+            when(fusoHorarioService.agora()).thenReturn(AGORA);
+            tarefaExistente.setDataEntrega(dataEntrega);
+            tarefaExistente.setHoraEntrega(horaEntrega);
+            when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
+                    .thenReturn(Optional.of(tarefaExistente));
+            return tarefaService.buscarTarefaPorId(idTarefa, idUsuarioLogado);
+        }
+
+        @Test
+        @DisplayName("sem hora, tarefa com entrega hoje ainda está PENDENTE (vence ao fim do dia)")
+        void semHoraEntregaHojeContinuaPendente() {
+            assertThat(buscarComAgora(AGORA.toLocalDate(), null).status()).isEqualTo(StatusTarefaEnum.PENDENTE);
+        }
+
+        @Test
+        @DisplayName("sem hora, tarefa com entrega ontem está ATRASADA")
+        void semHoraEntregaOntemEstaAtrasada() {
+            assertThat(buscarComAgora(AGORA.toLocalDate().minusDays(1), null).status()).isEqualTo(StatusTarefaEnum.ATRASADA);
+        }
+
+        @Test
+        @DisplayName("com hora já passada hoje, a tarefa está ATRASADA")
+        void comHoraPassadaHojeEstaAtrasada() {
+            assertThat(buscarComAgora(AGORA.toLocalDate(), LocalTime.of(14, 0)).status()).isEqualTo(StatusTarefaEnum.ATRASADA);
+        }
+
+        @Test
+        @DisplayName("com hora ainda por vir hoje, a tarefa está PENDENTE")
+        void comHoraFuturaHojeContinuaPendente() {
+            assertThat(buscarComAgora(AGORA.toLocalDate(), LocalTime.of(16, 0)).status()).isEqualTo(StatusTarefaEnum.PENDENTE);
+        }
+
+        @Test
+        @DisplayName("deve aceitar data de entrega no passado ao criar e guardar a hora informada")
+        void deveAceitarDataPassadaEGuardarHora() {
+            LocalDate ontem = LocalDate.now().minusDays(1);
+            TarefaRequestDTO dto = new TarefaRequestDTO("Lista antiga", null, ontem, LocalTime.of(9, 30), idDisciplina);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            ArgumentCaptor<Tarefa> captor = ArgumentCaptor.forClass(Tarefa.class);
+            when(tarefaRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+            TarefaResponseDTO resultado = tarefaService.criarTarefa(dto, idUsuarioLogado);
+
+            assertThat(captor.getValue().getDataEntrega()).isEqualTo(ontem);
+            assertThat(captor.getValue().getHoraEntrega()).isEqualTo(LocalTime.of(9, 30));
+            assertThat(resultado.horaEntrega()).isEqualTo(LocalTime.of(9, 30));
+        }
+
+        @Test
+        @DisplayName("dataConclusao deve usar o horário local do usuário (fuso do aparelho)")
+        void dataConclusaoUsaFusoDoUsuario() {
+            when(fusoHorarioService.agora()).thenReturn(AGORA);
+            when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
+                    .thenReturn(Optional.of(tarefaExistente));
+            when(tarefaRepository.save(any(Tarefa.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            TarefaResponseDTO resultado = tarefaService.concluirTarefa(idTarefa, idUsuarioLogado);
+
+            assertThat(resultado.dataConclusao()).isEqualTo(AGORA);
+        }
+    }
+
+    @Nested
     @DisplayName("reabrirTarefa")
     class ReabrirTarefa {
 
@@ -357,7 +437,7 @@ class TarefaServiceTest {
         @DisplayName("deve lançar TarefaNaoConcluidaException ao tentar reabrir tarefa que ainda não foi concluída")
         void deveLancarExceptionQuandoNaoConcluida() {
             when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
-                    .thenReturn(Optional.of(tarefaExistente)); // concluida = false por padrão do setUp
+                    .thenReturn(Optional.of(tarefaExistente));
 
             assertThatThrownBy(() -> tarefaService.reabrirTarefa(idTarefa, idUsuarioLogado))
                     .isInstanceOf(TarefaNaoConcluidaException.class);

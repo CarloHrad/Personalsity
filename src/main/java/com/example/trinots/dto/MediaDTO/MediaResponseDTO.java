@@ -10,5 +10,8 @@ public record MediaResponseDTO(
         Double mediaAtual,
         Double mediaAprovacao,
         Double faltaParaAprovacao,
-        List<AvaliacaoMediaResponseDTO> avaliacoes
+        List<AvaliacaoMediaResponseDTO> avaliacoes,
+        Double projecaoPessimista,
+        Double notaNecessariaRestantes,
+        Boolean emRiscoReprovacao
 ) {}

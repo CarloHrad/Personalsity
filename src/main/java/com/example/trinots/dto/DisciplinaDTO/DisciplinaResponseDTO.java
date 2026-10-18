@@ -22,5 +22,8 @@ public record DisciplinaResponseDTO(
         Double mediaAtual,
         Double faltaParaAprovacao,
         Boolean arquivada,
-        List<HorarioResponseDTO> horarios
+        List<HorarioResponseDTO> horarios,
+        Double projecaoPessimista,
+        Double notaNecessariaRestantes,
+        Boolean emRiscoReprovacao
 ) {}

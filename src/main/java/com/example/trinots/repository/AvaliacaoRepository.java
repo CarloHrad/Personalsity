@@ -11,4 +11,6 @@ public interface AvaliacaoRepository extends JpaRepository<Avaliacao, UUID> {
     List<Avaliacao> findByDisciplinaIdDisciplina(UUID idDisciplina);
     Optional<Avaliacao> findByIdAvaliacaoAndDisciplinaUsuarioIdUsuario(UUID idAvaliacao, UUID idUsuario);
     List<Avaliacao> findByDisciplinaIdDisciplinaIn(List<UUID> idsDisciplina);
+
+    void deleteByDisciplinaUsuarioIdUsuario(UUID idUsuario);
 }

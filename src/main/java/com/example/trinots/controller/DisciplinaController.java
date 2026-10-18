@@ -75,6 +75,11 @@ public class DisciplinaController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/desarquivar")
+    public ResponseEntity<DisciplinaResponseDTO> desarquivar(@PathVariable UUID id, @AuthenticationPrincipal Usuario usuarioLogado) {
+        return ResponseEntity.ok(disciplinaService.desarquivarDisciplina(id, usuarioLogado.getIdUsuario()));
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<DisciplinaResponseDTO> atualizarStatus(@PathVariable UUID id, @AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(disciplinaService.atualizarStatusDisciplina(id, usuarioLogado.getIdUsuario()));

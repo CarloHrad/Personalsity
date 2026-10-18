@@ -13,13 +13,15 @@ public interface DisciplinaRepository extends JpaRepository<Disciplina, UUID> {
     List<Disciplina> findByUsuarioIdUsuario(UUID idUsuario);
 
     boolean existsByNomeDisciplinaAndUsuarioIdUsuario(String nomeDisciplina, UUID idUsuario);
+    boolean existsByNomeDisciplinaAndUsuarioIdUsuarioAndIdDisciplinaNot(String nomeDisciplina, UUID idUsuario, UUID idDisciplina);
+    void deleteByUsuarioIdUsuario(UUID idUsuario);
 
     Optional<Disciplina> findByIdDisciplinaAndUsuarioIdUsuario(UUID idDisciplina, UUID idUsuario);
 
     List<Disciplina> findByUsuarioIdUsuarioAndPeriodo(UUID idUsuario, Integer periodo);
 
     List<Disciplina> findByUsuarioIdUsuarioAndPeriodoAndStatus(UUID idUsuario, Integer periodo, StatusDisciplinaEnum status);
-    
+
     List<Disciplina> findByUsuarioIdUsuarioAndArquivadaTrue(UUID idUsuario);
 
     List<Disciplina> findByUsuarioIdUsuarioAndPeriodoAndArquivadaTrue(UUID idUsuario, Integer periodo);

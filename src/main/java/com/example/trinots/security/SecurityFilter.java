@@ -1,6 +1,8 @@
 package com.example.trinots.security;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.trinots.domain.Usuario;
+import com.example.trinots.repository.TokenRevogadoRepository;
 import com.example.trinots.repository.UsuarioRepository;
 import com.example.trinots.service.AccessTokenService;
 import jakarta.servlet.FilterChain;
@@ -22,6 +24,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     private final AccessTokenService accessTokenService;
     private final UsuarioRepository usuarioRepository;
+    private final TokenRevogadoRepository tokenRevogadoRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -30,16 +33,13 @@ public class SecurityFilter extends OncePerRequestFilter {
         String token = extrairToken(request);
 
         if (token != null) {
-            String email = accessTokenService.validateToken(token);
+            DecodedJWT jwt = accessTokenService.decodificar(token);
 
-            if (email != null) {
-                Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
+            if (jwt != null && jwt.getId() != null && !tokenRevogadoRepository.existsById(jwt.getId())) {
+                Usuario usuario = usuarioRepository.findByEmail(jwt.getSubject())
+                        .filter(Usuario::isAtivo)
+                        .orElse(null);
 
-                if (usuario != null && usuario.isAtivo()) {
-                    var authentication = new UsernamePasswordAuthenticationToken(usuario, null, Collections.emptyList());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-                
                 if (usuario != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(usuario, null, Collections.emptyList());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -55,6 +55,6 @@ public class SecurityFilter extends OncePerRequestFilter {
         if (header == null || !header.startsWith("Bearer ")) {
             return null;
         }
-        return header.replace("Bearer ", "");
+        return header.substring("Bearer ".length());
     }
 }

@@ -2,7 +2,6 @@ package com.example.trinots.dto.UsuarioDTO;
 
 import com.example.trinots.dto.CursoDTO.CursoResponseDTO;
 
-import java.time.LocalDate;
 import java.util.UUID;
 
 public record UsuarioResponseDTO(
@@ -12,5 +11,6 @@ public record UsuarioResponseDTO(
         String email,
         CursoResponseDTO curso,
         Integer semestreAtual,
-        boolean ativo
+        boolean ativo,
+        boolean emailVerificado
 ) {}

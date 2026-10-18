@@ -6,7 +6,6 @@ import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoConcluirDTO;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoRequestDTO;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoResponseDTO;
-import com.example.trinots.exception.exceptions.PesoObrigatorioException;
 import com.example.trinots.exception.exceptions.*;
 import com.example.trinots.repository.AvaliacaoRepository;
 import com.example.trinots.repository.DisciplinaRepository;
@@ -14,7 +13,6 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,13 +24,16 @@ public class AvaliacaoService {
     private final AvaliacaoRepository avaliacaoRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final DisciplinaService disciplinaService;
+    private final FusoHorarioService fusoHorarioService;
 
     public AvaliacaoService(AvaliacaoRepository avaliacaoRepository,
                             DisciplinaRepository disciplinaRepository,
-                            DisciplinaService disciplinaService) {
+                            DisciplinaService disciplinaService,
+                            FusoHorarioService fusoHorarioService) {
         this.avaliacaoRepository = avaliacaoRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.disciplinaService = disciplinaService;
+        this.fusoHorarioService = fusoHorarioService;
     }
 
     public AvaliacaoResponseDTO criarAvaliacao(AvaliacaoRequestDTO dto, UUID idUsuarioLogado) {
@@ -62,14 +63,11 @@ public class AvaliacaoService {
         avaliacao.setPeso(peso);
         avaliacao.setNotaObtida(dto.notaObtida());
         avaliacao.setConcluida(jaConcluida);
-        avaliacao.setDataConclusao(jaConcluida ? LocalDateTime.now() : null);
+        avaliacao.setDataConclusao(jaConcluida ? fusoHorarioService.agora() : null);
         avaliacao.setDisciplina(disciplina);
 
         Avaliacao salva = avaliacaoRepository.save(avaliacao);
-
-        if (jaConcluida) {
-            disciplinaService.atualizarStatusDisciplina(disciplina.getIdDisciplina(), idUsuarioLogado);
-        }
+        disciplinaService.atualizarStatusDisciplina(disciplina.getIdDisciplina(), idUsuarioLogado);
 
         return toResponseDTO(salva);
     }
@@ -94,17 +92,19 @@ public class AvaliacaoService {
             throw new DisciplinaArquivadaException("Não é possível editar avaliação de uma disciplina arquivada");
         }
 
-        // avaliação pertence à disciplina onde foi criada; não é permitido "mover" entre disciplinas —
-        // se o usuário errou a disciplina, o fluxo correto é excluir e recriar na disciplina certa
         if (!disciplina.getIdDisciplina().equals(dto.idDisciplina())) {
             throw new DisciplinaImutavelException("Não é possível mover uma avaliação para outra disciplina. Exclua e crie novamente na disciplina correta.");
         }
 
         if (avaliacao.getConcluida()) {
-            boolean tentandoAlterarCampoTravado =
-                    !avaliacao.getNotaMaxima().equals(dto.notaMaxima()) ||
-                            !Objects.equals(avaliacao.getPeso(), dto.peso()) ||
-                            !Objects.equals(avaliacao.getNotaObtida(), dto.notaObtida());
+            boolean mudouNotaMaxima = !avaliacao.getNotaMaxima().equals(dto.notaMaxima());
+            boolean mudouPeso = disciplina.getTipoMedia() == TipoMediaEnum.PONDERADA
+                    && dto.peso() != null
+                    && !Objects.equals(avaliacao.getPeso(), dto.peso());
+            boolean mudouNota = dto.notaObtida() != null
+                    && !Objects.equals(avaliacao.getNotaObtida(), dto.notaObtida());
+
+            boolean tentandoAlterarCampoTravado = mudouNotaMaxima || mudouPeso || mudouNota;
 
             if (tentandoAlterarCampoTravado) {
                 throw new AvaliacaoJaConcluidaException(
@@ -152,7 +152,7 @@ public class AvaliacaoService {
 
         avaliacao.setNotaObtida(dto.notaObtida());
         avaliacao.setConcluida(true);
-        avaliacao.setDataConclusao(LocalDateTime.now());
+        avaliacao.setDataConclusao(fusoHorarioService.agora());
 
         Avaliacao atualizada = avaliacaoRepository.save(avaliacao);
 
@@ -184,16 +184,11 @@ public class AvaliacaoService {
     }
 
     public void deletarAvaliacao(UUID id, UUID idUsuarioLogado) {
-        // deletar é permitido mesmo com disciplina arquivada (intencional)
         Avaliacao avaliacao = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         UUID idDisciplina = avaliacao.getDisciplina().getIdDisciplina();
-        boolean estavaConcluida = avaliacao.getConcluida();
 
         avaliacaoRepository.delete(avaliacao);
-
-        if (estavaConcluida) {
-            disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
-        }
+        disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
     }
 
     private Double resolverPeso(Disciplina disciplina, Double pesoInformado) {

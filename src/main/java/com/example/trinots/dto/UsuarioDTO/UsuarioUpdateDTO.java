@@ -2,16 +2,15 @@ package com.example.trinots.dto.UsuarioDTO;
 
 import jakarta.validation.constraints.*;
 
-import java.time.LocalDate;
-import java.util.UUID;
-
 public record UsuarioUpdateDTO(
         @NotBlank(message = "Nome é obrigatório")
         @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
+        @Pattern(regexp = "^[A-Za-zÀ-ÖØ-öø-ÿ'\\- ]+$", message = "Sobrenome deve conter apenas letras")
         String nome,
 
         @NotBlank(message = "Sobrenome é obrigatório")
         @Size(min = 2, max = 100, message = "Sobrenome deve ter entre 2 e 100 caracteres")
+        @Pattern(regexp = "^[A-Za-zÀ-ÖØ-öø-ÿ'\\- ]+$", message = "Sobrenome deve conter apenas letras")
         String sobrenome,
 
         @NotNull(message = "Semestre é obrigatório")

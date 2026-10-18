@@ -4,8 +4,6 @@ import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
-import java.time.LocalDate;
-import java.util.UUID;
 
 public record UsuarioRequestDTO (
     @NotBlank(message = "Nome é obrigatório")

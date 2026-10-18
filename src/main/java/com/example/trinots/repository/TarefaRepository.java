@@ -12,4 +12,6 @@ public interface TarefaRepository extends JpaRepository<Tarefa, UUID> {
     Optional<Tarefa> findByIdTarefaAndDisciplinaUsuarioIdUsuario(UUID idTarefa, UUID idUsuario);
     List<Tarefa> findByDisciplinaUsuarioIdUsuario(UUID idUsuario);
     List<Tarefa> findByDisciplinaUsuarioIdUsuarioAndDisciplinaPeriodo(UUID idUsuario, Integer periodo);
+
+    void deleteByDisciplinaUsuarioIdUsuario(UUID idUsuario);
 }

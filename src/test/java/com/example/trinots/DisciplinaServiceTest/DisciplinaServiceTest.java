@@ -1,12 +1,18 @@
 package com.example.trinots.DisciplinaServiceTest;
 
-import com.example.trinots.domain.*;
+import com.example.trinots.domain.Avaliacao;
+import com.example.trinots.domain.Disciplina;
+import com.example.trinots.domain.Tarefa;
+import com.example.trinots.domain.Usuario;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
 import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
 import com.example.trinots.exception.exceptions.*;
-import com.example.trinots.repository.*;
+import com.example.trinots.repository.AvaliacaoRepository;
+import com.example.trinots.repository.DisciplinaRepository;
+import com.example.trinots.repository.HorarioRepository;
+import com.example.trinots.repository.TarefaRepository;
 import com.example.trinots.service.DisciplinaService;
 import com.example.trinots.service.HorarioService;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,7 +27,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -47,7 +54,7 @@ class DisciplinaServiceTest {
         horarioRepository = mock(HorarioRepository.class);
         avaliacaoRepository = mock(AvaliacaoRepository.class);
         tarefaRepository = mock(TarefaRepository.class);
-        horarioService = mock(HorarioService.class); // novo
+        horarioService = mock(HorarioService.class);
         disciplinaService = new DisciplinaService(disciplinaRepository, avaliacaoRepository, horarioRepository, tarefaRepository, horarioService);
 
         idUsuarioLogado = UUID.randomUUID();
@@ -72,7 +79,13 @@ class DisciplinaServiceTest {
     }
 
     private Avaliacao criarAvaliacao(Double nota, Double peso, boolean concluida) {
+        return criarAvaliacaoComMaxima(nota, 10.0, peso, concluida);
+    }
+
+    private Avaliacao criarAvaliacaoComMaxima(Double nota, Double notaMaxima, Double peso, boolean concluida) {
         Avaliacao avaliacao = new Avaliacao();
+        avaliacao.setIdAvaliacao(UUID.randomUUID());
+        avaliacao.setNotaMaxima(notaMaxima);
         avaliacao.setNotaObtida(nota);
         avaliacao.setPeso(peso);
         avaliacao.setConcluida(concluida);
@@ -147,7 +160,6 @@ class DisciplinaServiceTest {
                     .thenReturn(Optional.of(disciplinaExistente));
 
             DisciplinaResponseDTO resultado = disciplinaService.buscarDisciplinaPorId(idDisciplina, idUsuarioLogado);
-            resultado.medi
 
             assertThat(resultado.idDisciplina()).isEqualTo(idDisciplina);
         }*/
@@ -156,7 +168,6 @@ class DisciplinaServiceTest {
         @DisplayName("deve lançar EntityNotFoundException quando disciplina pertence a OUTRO usuário (IDOR)")
         void deveLancarExceptionQuandoPertenceAOutroUsuario() {
             UUID idOutroUsuario = UUID.randomUUID();
-            // simula que o repository não encontra nada, pois a query já filtra por dono
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idOutroUsuario))
                     .thenReturn(Optional.empty());
 
@@ -240,6 +251,21 @@ class DisciplinaServiceTest {
         }
 
         @Test
+        @DisplayName("não deve permitir renomear para um nome que o usuário já usa em outra disciplina")
+        void naoDevePermitirRenomearParaNomeJaExistente() {
+            DisciplinaRequestDTO dto = criarDtoValido(TipoMediaEnum.SIMPLES);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(disciplinaRepository.existsByNomeDisciplinaAndUsuarioIdUsuarioAndIdDisciplinaNot(
+                    dto.nomeDisciplina(), idUsuarioLogado, idDisciplina)).thenReturn(true);
+
+            assertThatThrownBy(() -> disciplinaService.atualizarDisciplina(idDisciplina, dto, idUsuarioLogado))
+                    .isInstanceOf(DisciplinaJaCadastradaException.class);
+
+            verify(disciplinaRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("não deve permitir atualizar disciplina de outro usuário")
         void naoDevePermitirAtualizarDeOutroUsuario() {
             DisciplinaRequestDTO dto = criarDtoValido(TipoMediaEnum.SIMPLES);
@@ -278,7 +304,7 @@ class DisciplinaServiceTest {
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
             when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina))
-                    .thenReturn(List.of(criarAvaliacao(8.0, 1.0, false))); // não concluída
+                    .thenReturn(List.of(criarAvaliacao(8.0, 1.0, false)));
 
             Double media = disciplinaService.calcularMedia(idDisciplina, idUsuarioLogado);
 
@@ -299,7 +325,7 @@ class DisciplinaServiceTest {
 
             Double media = disciplinaService.calcularMedia(idDisciplina, idUsuarioLogado);
 
-            assertThat(media).isEqualTo(8.0); // (8+6+10)/3
+            assertThat(media).isEqualTo(8.0);
         }
 
         @Test
@@ -308,7 +334,6 @@ class DisciplinaServiceTest {
             disciplinaExistente.setTipoMedia(TipoMediaEnum.PONDERADA);
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
-            // prova peso 3 (nota 8), trabalho peso 1 (nota 4) -> (8*3 + 4*1) / (3+1) = 28/4 = 7.0
             when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(
                     criarAvaliacao(8.0, 3.0, true),
                     criarAvaliacao(4.0, 1.0, true)
@@ -327,7 +352,7 @@ class DisciplinaServiceTest {
                     .thenReturn(Optional.of(disciplinaExistente));
             when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(
                     criarAvaliacao(10.0, 1.0, true),
-                    criarAvaliacao(0.0, 1.0, false) // não deve entrar na conta
+                    criarAvaliacao(0.0, 1.0, false)
             ));
 
             Double media = disciplinaService.calcularMedia(idDisciplina, idUsuarioLogado);
@@ -400,6 +425,93 @@ class DisciplinaServiceTest {
             assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.APROVADO);
         }
 
+        @Test
+        @DisplayName("deve manter EM_PROGRESSO enquanto houver avaliação pendente, mesmo com média parcial baixa")
+        void deveManterEmProgressoComAvaliacaoPendente() {
+            disciplinaExistente.setTipoMedia(TipoMediaEnum.SIMPLES);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(
+                    criarAvaliacao(4.0, 1.0, true),
+                    criarAvaliacao(null, 1.0, false)));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            DisciplinaResponseDTO resultado = disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
+
+            assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.EM_PROGRESSO);
+            assertThat(resultado.mediaAtual()).isEqualTo(4.0);
+        }
+
+        @Test
+        @DisplayName("deve fechar o status pela média quando todas as avaliações cadastradas estão concluídas")
+        void deveFecharStatusQuandoTodasConcluidas() {
+            disciplinaExistente.setTipoMedia(TipoMediaEnum.SIMPLES);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(
+                    criarAvaliacao(4.0, 1.0, true),
+                    criarAvaliacao(5.0, 1.0, true)));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            DisciplinaResponseDTO resultado = disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
+
+            assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.REPROVADO);
+        }
+
+        @Test
+        @DisplayName("deve normalizar a nota pela nota máxima: 35 de 50 vira 7.0 e aprova")
+        void deveNormalizarNotaPelaNotaMaxima() {
+            disciplinaExistente.setTipoMedia(TipoMediaEnum.SIMPLES);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina))
+                    .thenReturn(List.of(criarAvaliacaoComMaxima(35.0, 50.0, 1.0, true)));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            DisciplinaResponseDTO resultado = disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
+
+            assertThat(resultado.mediaAtual()).isEqualTo(7.0);
+            assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.APROVADO);
+        }
+
+        @Test
+        @DisplayName("não deve recalcular nem salvar disciplina arquivada: o status ARQUIVADA é preservado")
+        void naoDeveAlterarDisciplinaArquivada() {
+            disciplinaExistente.setArquivada(true);
+            disciplinaExistente.setStatus(StatusDisciplinaEnum.ARQUIVADA);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina))
+                    .thenReturn(List.of(criarAvaliacao(9.0, 1.0, true)));
+
+            DisciplinaResponseDTO resultado = disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
+
+            assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.ARQUIVADA);
+            assertThat(disciplinaExistente.getStatus()).isEqualTo(StatusDisciplinaEnum.ARQUIVADA);
+            verify(disciplinaRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("recalcular o status de todas as disciplinas deve ignorar as arquivadas")
+        void recalcularTodasDeveIgnorarArquivadas() {
+            Disciplina arquivada = new Disciplina();
+            arquivada.setIdDisciplina(UUID.randomUUID());
+            arquivada.setArquivada(true);
+            arquivada.setStatus(StatusDisciplinaEnum.ARQUIVADA);
+            arquivada.setUsuario(usuarioLogado);
+
+            when(disciplinaRepository.findByUsuarioIdUsuario(idUsuarioLogado)).thenReturn(List.of(arquivada, disciplinaExistente));
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of());
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            disciplinaService.recalcularStatusDeTodasAsDisciplinas(idUsuarioLogado);
+
+            assertThat(arquivada.getStatus()).isEqualTo(StatusDisciplinaEnum.ARQUIVADA);
+            verify(disciplinaRepository, never()).findByIdDisciplinaAndUsuarioIdUsuario(eq(arquivada.getIdDisciplina()), any());
+        }
+
         /*@Test
         @DisplayName("deve manter status EM_PROGRESSO quando ainda não há média calculável")
         void deveManterEmProgressoQuandoSemMedia() {
@@ -413,6 +525,158 @@ class DisciplinaServiceTest {
             assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.EM_PROGRESSO);
         }
     }*/
+
+        @Nested
+        @DisplayName("projeção e risco de reprovação")
+        class ProjecaoERisco {
+
+            private void prepararDisciplinaComAvaliacoes(Avaliacao... avaliacoes) {
+                disciplinaExistente.setTipoMedia(TipoMediaEnum.SIMPLES);
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
+                when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(avaliacoes));
+            }
+
+            @Test
+            @DisplayName("pendente fica fora da média atual e entra como zero só na projeção pessimista")
+            void pendenteSoEntraComoZeroNaProjecao() {
+                prepararDisciplinaComAvaliacoes(criarAvaliacao(8.0, 1.0, true), criarAvaliacao(null, 1.0, false));
+
+                var media = disciplinaService.buscarMedia(idDisciplina, idUsuarioLogado);
+
+                assertThat(media.mediaAtual()).isEqualTo(8.0);
+                assertThat(media.projecaoPessimista()).isEqualTo(4.0);
+                assertThat(media.notaNecessariaRestantes()).isEqualTo(4.0);
+                assertThat(media.emRiscoReprovacao()).isFalse();
+            }
+
+            @Test
+            @DisplayName("deve marcar risco quando a nota necessária nas restantes passa da nota máxima possível (10)")
+            void deveMarcarRiscoQuandoNotaNecessariaMaiorQueDez() {
+                prepararDisciplinaComAvaliacoes(
+                        criarAvaliacao(1.0, 1.0, true), criarAvaliacao(0.0, 1.0, true), criarAvaliacao(null, 1.0, false));
+
+                var media = disciplinaService.buscarMedia(idDisciplina, idUsuarioLogado);
+
+                assertThat(media.notaNecessariaRestantes()).isEqualTo(17.0);
+                assertThat(media.emRiscoReprovacao()).isTrue();
+            }
+
+            @Test
+            @DisplayName("não deve marcar risco quando a nota necessária é exatamente 10")
+            void naoDeveMarcarRiscoNoLimiteExato() {
+                prepararDisciplinaComAvaliacoes(criarAvaliacao(2.0, 1.0, true), criarAvaliacao(null, 1.0, false));
+                disciplinaExistente.getUsuario().setMediaAprovacao(6.0);
+
+                var media = disciplinaService.buscarMedia(idDisciplina, idUsuarioLogado);
+
+                assertThat(media.notaNecessariaRestantes()).isEqualTo(10.0);
+                assertThat(media.emRiscoReprovacao()).isFalse();
+            }
+
+            @Test
+            @DisplayName("deve expor a nota normalizada (0–10) de cada avaliação")
+            void deveExporNotaNormalizada() {
+                prepararDisciplinaComAvaliacoes(criarAvaliacaoComMaxima(35.0, 50.0, 1.0, true));
+
+                var media = disciplinaService.buscarMedia(idDisciplina, idUsuarioLogado);
+
+                assertThat(media.avaliacoes()).hasSize(1);
+                assertThat(media.avaliacoes().get(0).notaNormalizada()).isEqualTo(7.0);
+            }
+
+            @Test
+            @DisplayName("na lista de disciplinas, arquivada nunca aparece em risco de reprovação")
+            void arquivadaNaoApareceEmRisco() {
+                prepararDisciplinaComAvaliacoes(
+                        criarAvaliacao(0.0, 1.0, true), criarAvaliacao(0.0, 1.0, true), criarAvaliacao(null, 1.0, false));
+                disciplinaExistente.setArquivada(true);
+                disciplinaExistente.setStatus(StatusDisciplinaEnum.ARQUIVADA);
+
+                DisciplinaResponseDTO resultado = disciplinaService.atualizarStatusDisciplina(idDisciplina, idUsuarioLogado);
+
+                assertThat(resultado.emRiscoReprovacao()).isFalse();
+            }
+        }
+
+        @Nested
+        @DisplayName("desarquivarDisciplina")
+        class DesarquivarDisciplina {
+
+            @BeforeEach
+            void arquivar() {
+                disciplinaExistente.setArquivada(true);
+                disciplinaExistente.setStatus(StatusDisciplinaEnum.ARQUIVADA);
+            }
+
+            @Test
+            @DisplayName("deve desarquivar e voltar o status a ser derivado da média")
+            void deveDesarquivarERecalcularStatus() {
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
+                when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina))
+                        .thenReturn(List.of(criarAvaliacao(7.0, 1.0, true)));
+                when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                DisciplinaResponseDTO resultado = disciplinaService.desarquivarDisciplina(idDisciplina, idUsuarioLogado);
+
+                assertThat(resultado.arquivada()).isFalse();
+                assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.APROVADO);
+                verify(horarioService).validarHorariosDaDisciplina(disciplinaExistente, idUsuarioLogado);
+            }
+
+            @Test
+            @DisplayName("deve voltar para EM_PROGRESSO quando não há avaliações")
+            void deveVoltarParaEmProgressoSemAvaliacoes() {
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
+                when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of());
+                when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                DisciplinaResponseDTO resultado = disciplinaService.desarquivarDisciplina(idDisciplina, idUsuarioLogado);
+
+                assertThat(resultado.status()).isEqualTo(StatusDisciplinaEnum.EM_PROGRESSO);
+            }
+
+            @Test
+            @DisplayName("não deve desarquivar quando os horários passam a conflitar com outra disciplina ativa")
+            void naoDeveDesarquivarComConflitoDeHorario() {
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
+                doThrow(new HorarioConflitanteException("conflito"))
+                        .when(horarioService).validarHorariosDaDisciplina(any(Disciplina.class), any(UUID.class));
+
+                assertThatThrownBy(() -> disciplinaService.desarquivarDisciplina(idDisciplina, idUsuarioLogado))
+                        .isInstanceOf(HorarioConflitanteException.class);
+
+                assertThat(disciplinaExistente.getArquivada()).isTrue();
+                verify(disciplinaRepository, never()).save(any());
+            }
+
+            @Test
+            @DisplayName("deve lançar DisciplinaNaoArquivadaException quando a disciplina não está arquivada")
+            void deveLancarQuandoNaoArquivada() {
+                disciplinaExistente.setArquivada(false);
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                        .thenReturn(Optional.of(disciplinaExistente));
+
+                assertThatThrownBy(() -> disciplinaService.desarquivarDisciplina(idDisciplina, idUsuarioLogado))
+                        .isInstanceOf(DisciplinaNaoArquivadaException.class);
+
+                verify(disciplinaRepository, never()).save(any());
+            }
+
+            @Test
+            @DisplayName("não deve permitir desarquivar disciplina de outro usuário")
+            void naoDevePermitirDesarquivarDeOutroUsuario() {
+                UUID idOutroUsuario = UUID.randomUUID();
+                when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idOutroUsuario))
+                        .thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> disciplinaService.desarquivarDisciplina(idDisciplina, idOutroUsuario))
+                        .isInstanceOf(EntityNotFoundException.class);
+            }
+        }
 
         @Nested
         @DisplayName("arquivarDisciplina")

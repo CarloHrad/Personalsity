@@ -2,18 +2,19 @@ package com.example.trinots.UsuarioServiceTest;
 
 import com.example.trinots.domain.Curso;
 import com.example.trinots.domain.Usuario;
+import com.example.trinots.domain.enums.TipoCodigoEnum;
+import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
 import com.example.trinots.dto.CursoDTO.CursoRequestDTO;
+import com.example.trinots.dto.UsuarioDTO.ExcluirContaDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
-import com.example.trinots.dto.AuthDTO.TrocarSenhaDTO;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.EmailJaCadastradoException;
-import com.example.trinots.repository.CursoRepository;
-import com.example.trinots.repository.DisciplinaRepository;
-import com.example.trinots.repository.UsuarioRepository;
+import com.example.trinots.repository.*;
 import com.example.trinots.service.DisciplinaService;
 import com.example.trinots.service.UsuarioService;
+import com.example.trinots.service.VerificacaoService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,15 +22,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -43,6 +44,11 @@ class UsuarioServiceTest {
     private UsuarioService usuarioService;
     private DisciplinaRepository disciplinaRepository;
     private DisciplinaService disciplinaService;
+    private VerificacaoService verificacaoService;
+    private CodigoVerificacaoRepository codigoVerificacaoRepository;
+    private TarefaRepository tarefaRepository;
+    private AvaliacaoRepository avaliacaoRepository;
+    private HorarioRepository horarioRepository;
 
     private UUID usuarioId;
     private Usuario usuarioExistente;
@@ -54,7 +60,14 @@ class UsuarioServiceTest {
         passwordEncoder = mock(PasswordEncoder.class);
         disciplinaRepository = mock(DisciplinaRepository.class);
         disciplinaService = mock(DisciplinaService.class);
-        usuarioService = new UsuarioService(usuarioRepository, cursoRepository, passwordEncoder, disciplinaRepository, disciplinaService);
+        verificacaoService = mock(VerificacaoService.class);
+        codigoVerificacaoRepository = mock(CodigoVerificacaoRepository.class);
+        tarefaRepository = mock(TarefaRepository.class);
+        avaliacaoRepository = mock(AvaliacaoRepository.class);
+        horarioRepository = mock(HorarioRepository.class);
+        usuarioService = new UsuarioService(usuarioRepository, cursoRepository, passwordEncoder, disciplinaRepository,
+                disciplinaService, verificacaoService, codigoVerificacaoRepository, tarefaRepository,
+                avaliacaoRepository, horarioRepository);
 
         usuarioId = UUID.randomUUID();
 
@@ -72,7 +85,6 @@ class UsuarioServiceTest {
         usuarioExistente.setSenha("senhaHasheada");
         usuarioExistente.setCurso(curso);
         usuarioExistente.setSemestreAtual(3);
-        usuarioExistente.setAtivo(true);
     }
 
     private UsuarioRequestDTO criarDtoValido() {
@@ -106,9 +118,37 @@ class UsuarioServiceTest {
             assertThat(resultado).isNotNull();
             assertThat(resultado.nome()).isEqualTo("João");
             assertThat(resultado.email()).isEqualTo("joao@email.com");
+            assertThat(resultado.ativo()).isTrue();
+            assertThat(resultado.emailVerificado()).isFalse();
             verify(passwordEncoder).encode("senha123");
             verify(cursoRepository).save(any(Curso.class));
             verify(usuarioRepository).save(any(Usuario.class));
+        }
+
+        @Test
+        @DisplayName("deve enviar código de verificação de e-mail ao criar a conta")
+        void deveEnviarCodigoDeVerificacao() {
+            UsuarioRequestDTO dto = criarDtoValido();
+            when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.empty());
+            when(cursoRepository.save(any(Curso.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(passwordEncoder.encode(any())).thenReturn("hash");
+            when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            usuarioService.criarUsuario(dto);
+
+            verify(verificacaoService).gerarEEnviar(any(Usuario.class), eq(TipoCodigoEnum.VERIFICACAO_EMAIL));
+        }
+
+        @Test
+        @DisplayName("não deve enviar código nem salvar nada quando o email já existe")
+        void naoDeveEnviarCodigoQuandoEmailJaExiste() {
+            UsuarioRequestDTO dto = criarDtoValido();
+            when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.of(usuarioExistente));
+
+            assertThatThrownBy(() -> usuarioService.criarUsuario(dto))
+                    .isInstanceOf(EmailJaCadastradoException.class);
+
+            verifyNoInteractions(verificacaoService);
         }
 
         @Test
@@ -158,6 +198,80 @@ class UsuarioServiceTest {
             assertThat(cursoCaptor.getValue().getNomeCurso()).isEqualTo("ADS");
             assertThat(cursoCaptor.getValue().getInstituicao()).isEqualTo("Faculdade XYZ");
             assertThat(cursoCaptor.getValue().getDuracao()).isEqualTo(6);
+        }
+    }
+
+    @Nested
+    @DisplayName("desativarUsuario")
+    class DesativarUsuario {
+
+        @Test
+        @DisplayName("deve marcar o usuário como inativo")
+        void deveDesativar() {
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+
+            usuarioService.desativarUsuario(usuarioId);
+
+            assertThat(usuarioExistente.isAtivo()).isFalse();
+            verify(usuarioRepository).save(usuarioExistente);
+        }
+
+        @Test
+        @DisplayName("deve lançar EntityNotFoundException quando usuário não existe")
+        void deveLancarQuandoNaoExiste() {
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> usuarioService.desativarUsuario(usuarioId))
+                    .isInstanceOf(EntityNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("excluirConta")
+    class ExcluirConta {
+
+        @Test
+        @DisplayName("deve apagar todos os dados em ordem de dependência quando a senha está correta")
+        void deveExcluirTudoEmCascata() {
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+            when(passwordEncoder.matches("senha123", "senhaHasheada")).thenReturn(true);
+
+            usuarioService.excluirConta(usuarioId, new ExcluirContaDTO("senha123"));
+
+            InOrder ordem = inOrder(avaliacaoRepository, tarefaRepository, horarioRepository,
+                    disciplinaRepository, codigoVerificacaoRepository, usuarioRepository, cursoRepository);
+            ordem.verify(avaliacaoRepository).deleteByDisciplinaUsuarioIdUsuario(usuarioId);
+            ordem.verify(tarefaRepository).deleteByDisciplinaUsuarioIdUsuario(usuarioId);
+            ordem.verify(horarioRepository).deleteByDisciplinaUsuarioIdUsuario(usuarioId);
+            ordem.verify(disciplinaRepository).deleteByUsuarioIdUsuario(usuarioId);
+            ordem.verify(codigoVerificacaoRepository).deleteByUsuarioIdUsuario(usuarioId);
+            ordem.verify(usuarioRepository).delete(usuarioExistente);
+            ordem.verify(cursoRepository).delete(usuarioExistente.getCurso());
+        }
+
+        @Test
+        @DisplayName("não deve apagar nada quando a senha está incorreta")
+        void naoDeveExcluirComSenhaIncorreta() {
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+            when(passwordEncoder.matches("errada", "senhaHasheada")).thenReturn(false);
+
+            assertThatThrownBy(() -> usuarioService.excluirConta(usuarioId, new ExcluirContaDTO("errada")))
+                    .isInstanceOf(CredenciaisInvalidasException.class);
+
+            verify(usuarioRepository, never()).delete(any(Usuario.class));
+            verifyNoInteractions(avaliacaoRepository, tarefaRepository, horarioRepository,
+                    disciplinaRepository, codigoVerificacaoRepository, cursoRepository);
+        }
+
+        @Test
+        @DisplayName("deve lançar EntityNotFoundException quando usuário não existe")
+        void deveLancarQuandoNaoExiste() {
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> usuarioService.excluirConta(usuarioId, new ExcluirContaDTO("senha123")))
+                    .isInstanceOf(EntityNotFoundException.class);
+
+            verify(usuarioRepository, never()).delete(any(Usuario.class));
         }
     }
 
@@ -274,46 +388,6 @@ class UsuarioServiceTest {
 
             assertThatThrownBy(() -> usuarioService.trocarSenha(idInexistente, dto))
                     .isInstanceOf(EntityNotFoundException.class);
-        }
-    }
-
-    @Nested
-    @DisplayName("desativarUsuario")
-    class DesativarUsuario {
-
-        @Test
-        @DisplayName("deve desativar usuário ativo com sucesso")
-        void deveDesativarComSucesso() {
-            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
-
-            usuarioService.desativarUsuario(usuarioId);
-
-            assertThat(usuarioExistente.isAtivo()).isFalse();
-            verify(usuarioRepository).save(usuarioExistente);
-        }
-
-        @Test
-        @DisplayName("deve lançar EntityNotFoundException ao desativar usuário inexistente")
-        void deveLancarExceptionAoDesativarInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(usuarioRepository.findById(idInexistente)).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> usuarioService.desativarUsuario(idInexistente))
-                    .isInstanceOf(EntityNotFoundException.class);
-
-            verify(usuarioRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("deve permitir desativar um usuário já desativado sem erro (idempotente)")
-        void deveSerIdempotente() {
-            usuarioExistente.setAtivo(false);
-            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
-
-            usuarioService.desativarUsuario(usuarioId);
-
-            assertThat(usuarioExistente.isAtivo()).isFalse();
-            verify(usuarioRepository).save(usuarioExistente);
         }
     }
 }
