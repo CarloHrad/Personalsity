@@ -40,6 +40,5 @@ public record DisciplinaRequestDTO(
         @NotNull(message = "Tipo de média é obrigatório")
         TipoMediaEnum tipoMedia,
 
-        @Valid
-        List<HorarioEmbutidoDTO> horarios
+        List<@NotNull(message = "Horário não pode ser nulo") @Valid HorarioEmbutidoDTO> horarios
 ) {}
