@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(HttpMethod.POST, "/usuarios").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/health").permitAll();
                     auth.requestMatchers(
                             "/auth/login",
                             "/auth/esqueci-senha",

@@ -2,6 +2,7 @@ package com.example.trinots.security;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.trinots.domain.Usuario;
+import com.example.trinots.logging.RequisicaoLogFilter;
 import com.example.trinots.repository.TokenRevogadoRepository;
 import com.example.trinots.repository.UsuarioRepository;
 import com.example.trinots.service.AccessTokenService;
@@ -43,6 +44,7 @@ public class SecurityFilter extends OncePerRequestFilter {
                 if (usuario != null) {
                     var authentication = new UsernamePasswordAuthenticationToken(usuario, null, Collections.emptyList());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                    request.setAttribute(RequisicaoLogFilter.ATRIBUTO_USUARIO_ID, usuario.getIdUsuario());
                 }
             }
         }

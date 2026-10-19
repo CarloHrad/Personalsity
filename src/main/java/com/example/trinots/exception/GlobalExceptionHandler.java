@@ -2,6 +2,7 @@ package com.example.trinots.exception;
 
 import com.example.trinots.exception.exceptions.ErrorValidationResponseDTO;
 import com.example.trinots.exception.exceptions.NegocioException;
+import com.example.trinots.logging.RequisicaoLogs;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.persistence.EntityNotFoundException;
@@ -54,8 +55,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDTO> handleGeneric(Exception ex) {
-        log.error("Erro não tratado", ex);
+    public ResponseEntity<ErrorResponseDTO> handleGeneric(Exception ex, jakarta.servlet.http.HttpServletRequest req) {
+        log.error("Erro nao tratado em {} {} user={}",
+                RequisicaoLogs.sanitizar(req.getMethod(), 10),
+                RequisicaoLogs.sanitizar(req.getRequestURI(), 200),
+                req.getAttribute(com.example.trinots.logging.RequisicaoLogFilter.ATRIBUTO_USUARIO_ID),
+                ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponseDTO("500", "Erro interno no servidor", LocalDateTime.now()));
     }
