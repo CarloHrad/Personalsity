@@ -1,0 +1,3 @@
+ALTER TABLE disciplina ALTER COLUMN arquivada DROP NOT NULL;
+ALTER TABLE tarefa     ALTER COLUMN concluida DROP NOT NULL;
+ALTER TABLE avaliacao  ALTER COLUMN concluida DROP NOT NULL;
