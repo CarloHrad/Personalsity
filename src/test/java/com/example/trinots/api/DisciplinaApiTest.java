@@ -1,5 +1,6 @@
 package com.example.trinots.api;
 
+import com.example.trinots.domain.enums.TipoMediaEnum;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -68,7 +69,6 @@ class DisciplinaApiTest extends ApiTestBase {
         Sessao s = novaSessao();
         post("/disciplinas", "{}", s).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erros.nomeDisciplina").exists()).andExpect(jsonPath("$.erros.periodo").exists())
-                .andExpect(jsonPath("$.erros.professor").exists()).andExpect(jsonPath("$.erros.sala").exists())
                 .andExpect(jsonPath("$.erros.cor").exists()).andExpect(jsonPath("$.erros.tipoMedia").exists());
     }
 
@@ -93,16 +93,6 @@ class DisciplinaApiTest extends ApiTestBase {
         get("/disciplinas/" + id, s).andExpect(jsonPath("$.nomeDisciplina").value(nome));
     }
 
-    @ParameterizedTest(name = "professor invalido [{0}]")
-    @NullAndEmptySource
-    @ValueSource(strings = {" ", "João123", "3João", "João;", "<script>alert(1)</script>", "' OR '1'='1", "João\nSilva",
-            "'; DROP TABLE disciplina;--", "😀", "João@x.com", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"})
-    void professorInvalido(String v) throws Exception {
-        Sessao s = novaSessao();
-        post("/disciplinas", Json.escrever(corpoCom("professor", v)), s)
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.erros.professor").exists());
-    }
-
     @ParameterizedTest(name = "professor aceito [{0}]")
     @ValueSource(strings = {"João", "Dr. João da Silva", "Prof.ª Maria", "O’Brien", "D'Ávila", "José-Luís", "Silva, João",
             "Nguyễn Văn", "Łukasz Żółć", "李雷", "Maria (Coord.)"})
@@ -112,8 +102,17 @@ class DisciplinaApiTest extends ApiTestBase {
         get("/disciplinas/" + id, s).andExpect(jsonPath("$.professor").value(v));
     }
 
+
+    @ParameterizedTest(name = "professor invalido [{0}]")
+    @ValueSource(strings = {" ", "João123", "3João", "João;", "<script>alert(1)</script>", "' OR '1'='1", "João\nSilva",
+            "'; DROP TABLE disciplina;--", "😀", "João@x.com", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"})
+    void professorInvalido(String v) throws Exception {
+        Sessao s = novaSessao();
+        post("/disciplinas", Json.escrever(corpoCom("professor", v)), s)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.erros.professor").exists());
+    }
+
     @ParameterizedTest(name = "sala invalida [{0}]")
-    @NullAndEmptySource
     @ValueSource(strings = {" ", "-A1", "A1;", "A1'", "<A1>", "A#1", "AAAAAAAAAAAAAAAAAAAAA", "'; DROP TABLE disciplina;--"})
     void salaInvalida(String v) throws Exception {
         Sessao s = novaSessao();

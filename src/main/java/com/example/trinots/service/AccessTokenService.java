@@ -20,6 +20,9 @@ public class AccessTokenService {
     @Value("${api.security.token.secret}")
     private String secret;
 
+    @Value("${api.security.token.expiracao-horas:168}")
+    private long expiracaoHoras;
+
     /**
      * HMAC256 exige chave de pelo menos 32 bytes. Falha na subida (em vez de rodar com segredo fraco),
      * obrigando a definir a variavel de ambiente JWT_SECRET em producao.
@@ -37,6 +40,7 @@ public class AccessTokenService {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             String token = JWT.create().withIssuer("auth").withSubject(usuario.getEmail())
                     .withJWTId(UUID.randomUUID().toString())
+                    .withClaim("sv", usuario.getVersaoSessao() == null ? 0 : usuario.getVersaoSessao())
                     .withExpiresAt(genExpirationDate()).sign(algorithm);
             return token;
         } catch (JWTCreationException jwtCreationException) {
@@ -58,8 +62,8 @@ public class AccessTokenService {
         }
     }
 
-    private Instant genExpirationDate(){
-        return Instant.now().plusSeconds(7200);
+    private Instant genExpirationDate() {
+        return Instant.now().plus(java.time.Duration.ofHours(expiracaoHoras));
     }
 
 

@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** /auth/login, /logout, /verificar-email, /reenviar-verificacao, /esqueci-senha, /redefinir-senha, /reativar. */
 class AuthApiTest extends ApiTestBase {
 
     @Test
@@ -298,7 +297,7 @@ class AuthApiTest extends ApiTestBase {
         String codigo = ultimoCodigo(antes.email(), TipoCodigoEnum.RECUPERACAO_SENHA);
         post("/auth/redefinir-senha", Json.obj("email", antes.email(), "codigo", codigo, "novaSenha", "novaSenha9"), null)
                 .andExpect(status().isNoContent());
-        assertStatusEm(get("/usuarios/me", antes), "token antigo apos redefinir senha", 200, 401);
+        get("/usuarios/me", antes).andExpect(status().isUnauthorized());   // a sessão antiga caiu (versaoSessao)
     }
 
     @Test

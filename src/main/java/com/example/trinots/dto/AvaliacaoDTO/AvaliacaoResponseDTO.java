@@ -14,5 +14,6 @@ public record AvaliacaoResponseDTO(
         Double notaMaxima,
         Double peso,
         Boolean concluida,
-        String nomeDisciplina
+        String nomeDisciplina,
+        Boolean aguardandoNota
 ) {}

@@ -11,6 +11,8 @@ import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.EmailJaCadastradoException;
+import com.example.trinots.exception.exceptions.SemestreInvalidoException;
+import com.example.trinots.exception.exceptions.SenhaIgualException;
 import com.example.trinots.repository.*;
 import com.example.trinots.service.DisciplinaService;
 import com.example.trinots.service.UsuarioService;
@@ -202,6 +204,62 @@ class UsuarioServiceTest {
     }
 
     @Nested
+    @DisplayName("semestre atual x duração do curso")
+    class SemestreXDuracao {
+
+        @Test
+        @DisplayName("cadastro com semestre maior que a duração é recusado antes de gravar qualquer coisa")
+        void cadastroRecusado() {
+            UsuarioRequestDTO dto = new UsuarioRequestDTO("João", "Silva", "joao@email.com", "senha123",
+                    new CursoRequestDTO("ADS", "Faculdade XYZ", 6), 7);
+            when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> usuarioService.criarUsuario(dto))
+                    .isInstanceOf(SemestreInvalidoException.class)
+                    .hasMessageContaining("semestre atual (7)");
+
+            verify(cursoRepository, never()).save(any());
+            verify(usuarioRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("editar o perfil com semestre maior que a duração do curso é recusado")
+        void atualizarPerfilRecusado() {
+            UsuarioUpdateDTO dto = new UsuarioUpdateDTO("João", "Silva", 7);   // curso tem 6 semestres
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+
+            assertThatThrownBy(() -> usuarioService.atualizarUsuario(usuarioId, dto))
+                    .isInstanceOf(SemestreInvalidoException.class);
+
+            verify(usuarioRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("semestre igual à duração é aceito")
+        void atualizarPerfilIgualADuracao() {
+            UsuarioUpdateDTO dto = new UsuarioUpdateDTO("João", "Silva", 6);
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+            when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(usuarioService.atualizarUsuario(usuarioId, dto).semestreAtual()).isEqualTo(6);
+        }
+
+        @Test
+        @DisplayName("reduzir a duração do curso abaixo do semestre atual é recusado")
+        void atualizarCursoRecusado() {
+            CursoRequestDTO dto = new CursoRequestDTO("ADS", "Faculdade XYZ", 2);   // usuário está no semestre 3
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+            when(cursoRepository.findById(usuarioExistente.getCurso().getIdCurso()))
+                    .thenReturn(Optional.of(usuarioExistente.getCurso()));
+
+            assertThatThrownBy(() -> usuarioService.atualizarCurso(usuarioId, dto))
+                    .isInstanceOf(SemestreInvalidoException.class);
+
+            verify(cursoRepository, never()).save(any());
+        }
+    }
+
+    @Nested
     @DisplayName("desativarUsuario")
     class DesativarUsuario {
 
@@ -213,6 +271,7 @@ class UsuarioServiceTest {
             usuarioService.desativarUsuario(usuarioId);
 
             assertThat(usuarioExistente.isAtivo()).isFalse();
+            assertThat(usuarioExistente.getVersaoSessao()).isEqualTo(1);   // tokens antigos deixam de valer
             verify(usuarioRepository).save(usuarioExistente);
         }
 
@@ -357,12 +416,29 @@ class UsuarioServiceTest {
             TrocarSenhaDTO dto = new TrocarSenhaDTO("senhaAtual123", "novaSenha456", "novaSenha456");
             when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
             when(passwordEncoder.matches("senhaAtual123", "senhaHasheada")).thenReturn(true);
+            when(passwordEncoder.matches("novaSenha456", "senhaHasheada")).thenReturn(false);
             when(passwordEncoder.encode("novaSenha456")).thenReturn("novaHash");
 
             usuarioService.trocarSenha(usuarioId, dto);
 
             assertThat(usuarioExistente.getSenha()).isEqualTo("novaHash");
+            assertThat(usuarioExistente.getVersaoSessao()).isEqualTo(1);   // invalida as sessões abertas
             verify(usuarioRepository).save(usuarioExistente);
+        }
+
+        @Test
+        @DisplayName("deve lançar SenhaIgualException quando a nova senha é igual à atual")
+        void deveLancarQuandoNovaSenhaIgualAAtual() {
+            TrocarSenhaDTO dto = new TrocarSenhaDTO("senha123", "senha123", "senha123");
+            when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioExistente));
+            when(passwordEncoder.matches("senha123", "senhaHasheada")).thenReturn(true);
+
+            assertThatThrownBy(() -> usuarioService.trocarSenha(usuarioId, dto))
+                    .isInstanceOf(SenhaIgualException.class)
+                    .hasMessageContaining("diferente da atual");
+
+            assertThat(usuarioExistente.getVersaoSessao()).isZero();
+            verify(usuarioRepository, never()).save(any());
         }
 
         @Test

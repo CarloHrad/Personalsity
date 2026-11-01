@@ -40,6 +40,8 @@ public class DisciplinaService {
         this.horarioService = horarioService;
     }
 
+    private static String vazioParaNulo(String s) { return (s == null || s.isBlank()) ? null : s.trim(); }
+
     public DisciplinaResponseDTO criarDisciplina(DisciplinaRequestDTO dto, Usuario usuarioLogado) {
         if (disciplinaRepository.existsByNomeDisciplinaAndUsuarioIdUsuario(dto.nomeDisciplina(), usuarioLogado.getIdUsuario())) {
             throw new DisciplinaJaCadastradaException("Você já tem uma disciplina chamada '" + dto.nomeDisciplina() + "'");
@@ -48,8 +50,8 @@ public class DisciplinaService {
         Disciplina disciplina = new Disciplina();
         disciplina.setNomeDisciplina(dto.nomeDisciplina());
         disciplina.setPeriodo(dto.periodo());
-        disciplina.setProfessor(dto.professor());
-        disciplina.setSala(dto.sala());
+        disciplina.setProfessor(vazioParaNulo(dto.professor()));
+        disciplina.setSala(vazioParaNulo(dto.sala()));
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
         disciplina.setStatus(StatusDisciplinaEnum.EM_PROGRESSO);
@@ -124,8 +126,8 @@ public class DisciplinaService {
 
         disciplina.setNomeDisciplina(dto.nomeDisciplina());
         disciplina.setPeriodo(dto.periodo());
-        disciplina.setProfessor(dto.professor());
-        disciplina.setSala(dto.sala());
+        disciplina.setProfessor(vazioParaNulo(dto.professor()));
+        disciplina.setSala(vazioParaNulo(dto.sala()));
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
 

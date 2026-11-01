@@ -219,7 +219,10 @@ public class AvaliacaoService {
                 avaliacao.getNotaMaxima(),
                 avaliacao.getPeso(),
                 avaliacao.getConcluida(),
-                avaliacao.getDisciplina().getNomeDisciplina()
+                avaliacao.getDisciplina().getNomeDisciplina(),
+                !Boolean.TRUE.equals(avaliacao.getConcluida())
+                        && avaliacao.getDataAvaliacao() != null
+                        && avaliacao.getDataAvaliacao().isBefore(fusoHorarioService.hoje())
         );
     }
 }

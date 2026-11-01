@@ -84,6 +84,7 @@ public class AuthService {
         verificacaoService.validarEConsumir(usuario, TipoCodigoEnum.RECUPERACAO_SENHA, dto.codigo());
 
         usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
+        usuario.setVersaoSessao((usuario.getVersaoSessao() == null ? 0 : usuario.getVersaoSessao()) + 1);
         usuarioRepository.save(usuario);
 
         log.info("Senha redefinida com sucesso para o usuário {}", usuario.getIdUsuario());

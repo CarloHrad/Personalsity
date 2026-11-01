@@ -37,4 +37,7 @@ public class Usuario {
     private boolean ativo = true;
 
     private boolean emailVerificado = false;
+
+    @Column(name = "versao_sessao", nullable = false)
+    private Integer versaoSessao = 0;
 }

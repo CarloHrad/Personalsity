@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -153,13 +154,6 @@ class AcademicoDtoValidacaoTest extends ValidacaoSuporte {
             assertInvalido(disc("Cálculo I", 1, v, "A101", 1, "#FF5733", TipoMediaEnum.SIMPLES, null), "professor");
         }
 
-        @ParameterizedTest(name = "professor vazio/nulo [{0}]")
-        @NullAndEmptySource
-        @ValueSource(strings = {" ", "   ", "\t"})
-        void professorVazioOuNulo(String v) {
-            assertInvalido(disc("Cálculo I", 1, v, "A101", 1, "#FF5733", TipoMediaEnum.SIMPLES, null), "professor", "obrigat");
-        }
-
         @ParameterizedTest(name = "sala valida #{index}")
         @MethodSource("com.example.trinots.validacao.AcademicoDtoValidacaoTest#salasValidas")
         void salaValida(String v) {
@@ -170,13 +164,6 @@ class AcademicoDtoValidacaoTest extends ValidacaoSuporte {
         @MethodSource("com.example.trinots.validacao.AcademicoDtoValidacaoTest#salasInvalidas")
         void salaInvalida(String v) {
             assertInvalido(disc("Cálculo I", 1, "Dr. João", v, 1, "#FF5733", TipoMediaEnum.SIMPLES, null), "sala");
-        }
-
-        @ParameterizedTest(name = "sala vazia/nula [{0}]")
-        @NullAndEmptySource
-        @ValueSource(strings = {" ", "  ", "\t"})
-        void salaVaziaOuNula(String v) {
-            assertInvalido(disc("Cálculo I", 1, "Dr. João", v, 1, "#FF5733", TipoMediaEnum.SIMPLES, null), "sala", "obrigat");
         }
 
         @ParameterizedTest
@@ -234,12 +221,41 @@ class AcademicoDtoValidacaoTest extends ValidacaoSuporte {
         @Test
         void todosOsCamposVaziosReportamObrigatorios() {
             var e = erros(disc(null, null, null, null, null, null, null, null));
-            assertEquals(java.util.Set.of("nomeDisciplina", "periodo", "professor", "sala", "cor", "tipoMedia"), e.keySet());
+            assertEquals(java.util.Set.of("nomeDisciplina", "periodo", "cor", "tipoMedia"), e.keySet());   // professor e sala são opcionais
         }
 
         @Test
         void nomeDeProfessorComAspasPassaMasEhInerteNoBanco() {
             assertValido(disc("Cálculo I", 1, "Maria' OR 'a' OR '", "A101", 1, "#FF5733", TipoMediaEnum.SIMPLES, null));
+        }
+
+
+        @ParameterizedTest(name = "professor vazio/nulo e aceito [{0}]")
+        @NullAndEmptySource
+        void professorVazioOuNuloEhAceito(String v) {
+            assertEquals(Map.of(),
+                    erros(disc("Cálculo I", 1, v, "A101", 1, "#FF5733", TipoMediaEnum.SIMPLES, null)));
+        }
+
+        @ParameterizedTest(name = "professor so com espacos [{0}]")
+        @ValueSource(strings = {" ", "   ", "\t"})
+        void professorSoComEspacosEhInvalido(String v) {
+            assertEquals(Map.of("professor", "Nome do professor contém caracteres inválidos"),
+                    erros(disc("Cálculo I", 1, v, "A101", 1, "#FF5733", TipoMediaEnum.SIMPLES, null)));
+        }
+
+        @ParameterizedTest(name = "sala vazia/nula e aceita [{0}]")
+        @NullAndEmptySource
+        void salaVaziaOuNulaEhAceita(String v) {
+            assertEquals(Map.of(),
+                    erros(disc("Cálculo I", 1, "Dr. João", v, 1, "#FF5733", TipoMediaEnum.SIMPLES, null)));
+        }
+
+        @ParameterizedTest(name = "sala so com espacos [{0}]")
+        @ValueSource(strings = {" ", "  ", "\t"})
+        void salaSoComEspacosEhInvalida(String v) {
+            assertEquals(Map.of("sala", "Sala contém caracteres inválidos"),
+                    erros(disc("Cálculo I", 1, "Dr. João", v, 1, "#FF5733", TipoMediaEnum.SIMPLES, null)));
         }
     }
 

@@ -56,6 +56,7 @@ class AvaliacaoServiceTest {
         disciplinaService = mock(DisciplinaService.class);
         fusoHorarioService = mock(FusoHorarioService.class);
         lenient().when(fusoHorarioService.agora()).thenReturn(AGORA);
+        lenient().when(fusoHorarioService.hoje()).thenReturn(AGORA.toLocalDate());
         avaliacaoService = new AvaliacaoService(avaliacaoRepository, disciplinaRepository, disciplinaService, fusoHorarioService);
 
         idUsuario = UUID.randomUUID();
@@ -131,6 +132,43 @@ class AvaliacaoServiceTest {
             assertThat(resultado.concluida()).isTrue();
             assertThat(resultado.dataConclusao()).isEqualTo(AGORA);
             verify(disciplinaService).atualizarStatusDisciplina(idDisciplina, idUsuario);
+        }
+
+        private AvaliacaoRequestDTO dtoComData(LocalDate data, Double nota) {
+            return new AvaliacaoRequestDTO("P1", null, data, nota, 10.0, null, idDisciplina);
+        }
+
+        @Test
+        @DisplayName("pendente com data anterior a hoje fica aguardando nota")
+        void pendenteComDataPassadaAguardaNota() {
+            disciplinaDoUsuario();
+            salvarRetornaArgumento();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.criarAvaliacao(dtoComData(AGORA.toLocalDate().minusDays(1), null), idUsuario);
+
+            assertThat(resultado.aguardandoNota()).isTrue();
+        }
+
+        @Test
+        @DisplayName("pendente com data de hoje ou futura não está aguardando nota")
+        void pendenteHojeOuFuturaNaoAguardaNota() {
+            disciplinaDoUsuario();
+            salvarRetornaArgumento();
+
+            assertThat(avaliacaoService.criarAvaliacao(dtoComData(AGORA.toLocalDate(), null), idUsuario).aguardandoNota()).isFalse();
+            assertThat(avaliacaoService.criarAvaliacao(dtoComData(AGORA.toLocalDate().plusDays(5), null), idUsuario).aguardandoNota()).isFalse();
+        }
+
+        @Test
+        @DisplayName("concluída, mesmo com data passada, não está aguardando nota")
+        void concluidaNaoAguardaNota() {
+            disciplinaDoUsuario();
+            salvarRetornaArgumento();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.criarAvaliacao(dtoComData(AGORA.toLocalDate().minusDays(10), 8.0), idUsuario);
+
+            assertThat(resultado.concluida()).isTrue();
+            assertThat(resultado.aguardandoNota()).isFalse();
         }
 
         @Test

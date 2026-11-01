@@ -1,5 +1,6 @@
 package com.example.trinots.SecurityFilterTest;
 
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.repository.TokenRevogadoRepository;
@@ -65,6 +66,9 @@ class SecurityFilterTest {
         DecodedJWT jwt = mock(DecodedJWT.class);
         lenient().when(jwt.getId()).thenReturn(jti);
         lenient().when(jwt.getSubject()).thenReturn("joao@email.com");
+        Claim sv = mock(Claim.class);
+        lenient().when(sv.asInt()).thenReturn(0);   // versão de sessão do token (a do usuário começa em 0)
+        lenient().when(jwt.getClaim("sv")).thenReturn(sv);
         return jwt;
     }
 
@@ -81,6 +85,37 @@ class SecurityFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
         assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal()).isSameAs(usuario);
         verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("token com versão de sessão antiga (senha trocada depois) não autentica")
+    void tokenComVersaoAntigaNaoAutentica() throws Exception {
+        usuario.setVersaoSessao(1);   // o token foi emitido com sv = 0
+        DecodedJWT jwt = jwtComJti("jti-1");
+        when(accessTokenService.decodificar("abc")).thenReturn(jwt);
+        when(tokenRevogadoRepository.existsById("jti-1")).thenReturn(false);
+        when(usuarioRepository.findByEmail("joao@email.com")).thenReturn(Optional.of(usuario));
+
+        filtro.doFilter(request, response, chain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("token sem a claim sv conta como versão 0 (tokens emitidos antes da mudança)")
+    void tokenSemClaimSvContaComoZero() throws Exception {
+        DecodedJWT jwt = jwtComJti("jti-1");
+        Claim semValor = mock(Claim.class);
+        when(semValor.asInt()).thenReturn(null);
+        when(jwt.getClaim("sv")).thenReturn(semValor);
+        when(accessTokenService.decodificar("abc")).thenReturn(jwt);
+        when(tokenRevogadoRepository.existsById("jti-1")).thenReturn(false);
+        when(usuarioRepository.findByEmail("joao@email.com")).thenReturn(Optional.of(usuario));
+
+        filtro.doFilter(request, response, chain);
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
     }
 
     @Test

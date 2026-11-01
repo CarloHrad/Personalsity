@@ -41,7 +41,7 @@ public class SecurityFilter extends OncePerRequestFilter {
                         .filter(Usuario::isAtivo)
                         .orElse(null);
 
-                if (usuario != null) {
+                if (usuario != null && sessaoAindaValida(usuario, jwt)) {
                     var authentication = new UsernamePasswordAuthenticationToken(usuario, null, Collections.emptyList());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     request.setAttribute(RequisicaoLogFilter.ATRIBUTO_USUARIO_ID, usuario.getIdUsuario());
@@ -50,6 +50,12 @@ public class SecurityFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean sessaoAindaValida(Usuario usuario, DecodedJWT jwt) {
+        Integer versaoDoToken = jwt.getClaim("sv").asInt();
+        int versaoAtual = usuario.getVersaoSessao() == null ? 0 : usuario.getVersaoSessao();
+        return (versaoDoToken == null ? 0 : versaoDoToken) == versaoAtual;
     }
 
     private String extrairToken(HttpServletRequest request) {

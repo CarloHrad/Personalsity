@@ -19,14 +19,12 @@ public record DisciplinaRequestDTO(
         @Max(value = 20, message = "Período deve ser no máximo 20")
         Integer periodo,
 
-        @NotBlank(message = "Nome do professor é obrigatório")
         @Size(max = 100, message = "Nome do professor deve ter no máximo 100 caracteres")
-        @Pattern(regexp = "^[\\p{L}][\\p{L} .,'’()-]*$", message = "Nome do professor contém caracteres inválidos")
+        @Pattern(regexp = "^$|^[\\p{L}][\\p{L} .,'’()-]*$", message = "Nome do professor contém caracteres inválidos")
         String professor,
 
-        @NotBlank(message = "Sala é obrigatória")
         @Size(max = 20, message = "Sala deve ter no máximo 20 caracteres")
-        @Pattern(regexp = "^[\\p{L}\\p{N}][\\p{L}\\p{N} ./-]*$", message = "Sala contém caracteres inválidos")
+        @Pattern(regexp = "^$|^[\\p{L}\\p{N}][\\p{L}\\p{N} ./-]*$", message = "Sala contém caracteres inválidos")
         String sala,
 
         @Min(value = 0, message = "Andar não pode ser negativo")

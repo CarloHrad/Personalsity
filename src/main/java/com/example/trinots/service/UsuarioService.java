@@ -12,6 +12,8 @@ import com.example.trinots.dto.UsuarioDTO.NovaMediaDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioRequestDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioResponseDTO;
 import com.example.trinots.dto.UsuarioDTO.UsuarioUpdateDTO;
+import com.example.trinots.exception.exceptions.SemestreInvalidoException;
+import com.example.trinots.exception.exceptions.SenhaIgualException;
 import com.example.trinots.exception.exceptions.CredenciaisInvalidasException;
 import com.example.trinots.exception.exceptions.EmailJaCadastradoException;
 import com.example.trinots.repository.AvaliacaoRepository;
@@ -60,6 +62,13 @@ public class UsuarioService {
         this.horarioRepository = horarioRepository;
     }
 
+    private void validarSemestre(Integer semestre, Integer duracao) {
+        if (semestre != null && duracao != null && semestre > duracao) {
+            throw new SemestreInvalidoException("O semestre atual (" + semestre
+                    + ") não pode ser maior que a duração do curso (" + duracao + " semestres)");
+        }
+    }
+
     public UsuarioResponseDTO criarUsuario(UsuarioRequestDTO dto) {
         if (usuarioRepository.findByEmail(dto.email()).isPresent()) {
             throw new EmailJaCadastradoException("Email já cadastrado");
@@ -69,6 +78,9 @@ public class UsuarioService {
         curso.setNomeCurso(dto.curso().nomeCurso());
         curso.setInstituicao(dto.curso().instituicao());
         curso.setDuracao(dto.curso().duracao());
+
+        validarSemestre(dto.semestreAtual(), dto.curso().duracao());
+
         Curso cursoSalvo = cursoRepository.save(curso);
 
         Usuario usuario = new Usuario();
@@ -92,6 +104,8 @@ public class UsuarioService {
         usuario.setSobrenome(dto.sobrenome());
         usuario.setSemestreAtual(dto.semestreAtual());
 
+        validarSemestre(dto.semestreAtual(), usuario.getCurso().getDuracao());
+
         Usuario atualizado = usuarioRepository.save(usuario);
         return toResponseDTO(atualizado);
     }
@@ -102,6 +116,7 @@ public class UsuarioService {
 
         curso.setNomeCurso(dto.nomeCurso());
         curso.setInstituicao(dto.instituicao());
+        validarSemestre(usuario.getSemestreAtual(), dto.duracao());
         curso.setDuracao(dto.duracao());
 
         cursoRepository.save(curso);
@@ -125,7 +140,12 @@ public class UsuarioService {
             throw new CredenciaisInvalidasException("Novas senhas diferentes");
         }
 
+        if (passwordEncoder.matches(dto.novaSenha(), usuario.getSenha())) {
+            throw new SenhaIgualException("A nova senha deve ser diferente da atual");
+        }
+
         usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
+        usuario.setVersaoSessao((usuario.getVersaoSessao() == null ? 0 : usuario.getVersaoSessao()) + 1);
         usuarioRepository.save(usuario);
     }
 
@@ -167,6 +187,8 @@ public class UsuarioService {
     public void desativarUsuario(UUID id) {
         Usuario usuario = buscarEntidadePorId(id);
         usuario.setAtivo(false);
+        // invalida os tokens emitidos até aqui: ao reativar a conta, eles não voltam a valer
+        usuario.setVersaoSessao((usuario.getVersaoSessao() == null ? 0 : usuario.getVersaoSessao()) + 1);
         usuarioRepository.save(usuario);
     }
 
@@ -177,6 +199,7 @@ public class UsuarioService {
         if (!passwordEncoder.matches(dto.senha(), usuario.getSenha())) {
             throw new CredenciaisInvalidasException("Senha incorreta");
         }
+
 
         Curso curso = usuario.getCurso();
 
