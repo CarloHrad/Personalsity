@@ -213,4 +213,15 @@ class MediaCalculatorTest {
             assertThat(r.emRiscoReprovacao()).isTrue();
         }
     }
+
+    @Test
+    @DisplayName("avaliação concluída sem nota fica fora da média e conta como pendente")
+    void concluidaSemNotaContaComoPendente() {
+        MediaCalculator.Resultado r = MediaCalculator.calcular(TipoMediaEnum.SIMPLES,
+                List.of(concluida(8, 10, 1), new Item(null, 10.0, 1.0, true)), 6.0);
+
+        assertThat(r.mediaAtual()).isEqualTo(8.0);
+        assertThat(r.todasConcluidas()).isFalse();
+        assertThat(r.notaNecessariaRestantes()).isNotNull();
+    }
 }

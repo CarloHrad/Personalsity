@@ -237,17 +237,77 @@ class DisciplinaServiceTest {
         }*/
 
         @Test
-        @DisplayName("deve lançar DisciplinaArquivadaException ao tentar editar disciplina arquivada")
-        void deveLancarExceptionQuandoArquivada() {
+        @DisplayName("disciplina arquivada pode ser editada e continua arquivada")
+        void devePermitirEditarArquivada() {
             disciplinaExistente.setArquivada(true);
-            DisciplinaRequestDTO dto = criarDtoValido(TipoMediaEnum.SIMPLES);
+            disciplinaExistente.setStatus(StatusDisciplinaEnum.ARQUIVADA);
+            DisciplinaRequestDTO dto = new DisciplinaRequestDTO("Cálculo Renomeado", 2, null, null, null, "#FF5733", TipoMediaEnum.SIMPLES, null);
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            assertThatThrownBy(() -> disciplinaService.atualizarDisciplina(idDisciplina, dto, idUsuarioLogado))
-                    .isInstanceOf(DisciplinaArquivadaException.class);
+            DisciplinaResponseDTO resultado = disciplinaService.atualizarDisciplina(idDisciplina, dto, idUsuarioLogado);
 
-            verify(disciplinaRepository, never()).save(any());
+            assertThat(resultado.nomeDisciplina()).isEqualTo("Cálculo Renomeado");
+            assertThat(disciplinaExistente.getArquivada()).isTrue();
+            assertThat(disciplinaExistente.getStatus()).isEqualTo(StatusDisciplinaEnum.ARQUIVADA);
+        }
+
+        @Test
+        @DisplayName("simples para ponderada com avaliações: mantém os pesos 1.0 e permite ajustá-los depois")
+        void simplesParaPonderadaMantemPesos() {
+            usuarioLogado.setMediaAprovacao(6.0);
+            Avaliacao a1 = criarAvaliacao(8.0, 1.0, true);
+            Avaliacao a2 = criarAvaliacao(null, 1.0, false);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(a1, a2));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            disciplinaService.atualizarDisciplina(idDisciplina, criarDtoValido(TipoMediaEnum.PONDERADA), idUsuarioLogado);
+
+            assertThat(disciplinaExistente.getTipoMedia()).isEqualTo(TipoMediaEnum.PONDERADA);
+            assertThat(a1.getPeso()).isEqualTo(1.0);
+            assertThat(a2.getPeso()).isEqualTo(1.0);
+        }
+
+        @Test
+        @DisplayName("ponderada para simples com avaliações: todos os pesos voltam a 1.0")
+        void ponderadaParaSimplesZeraPesos() {
+            usuarioLogado.setMediaAprovacao(6.0);
+            disciplinaExistente.setTipoMedia(TipoMediaEnum.PONDERADA);
+            Avaliacao a1 = criarAvaliacao(8.0, 3.0, true);
+            Avaliacao a2 = criarAvaliacao(null, 7.0, false);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(a1, a2));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            disciplinaService.atualizarDisciplina(idDisciplina, criarDtoValido(TipoMediaEnum.SIMPLES), idUsuarioLogado);
+
+            assertThat(disciplinaExistente.getTipoMedia()).isEqualTo(TipoMediaEnum.SIMPLES);
+            assertThat(a1.getPeso()).isEqualTo(1.0);
+            assertThat(a2.getPeso()).isEqualTo(1.0);
+            verify(avaliacaoRepository).saveAll(List.of(a1, a2));
+        }
+
+        @Test
+        @DisplayName("trocar o tipo de média recalcula o status da disciplina")
+        void trocarTipoMediaRecalculaStatus() {
+            usuarioLogado.setMediaAprovacao(6.0);
+            disciplinaExistente.setTipoMedia(TipoMediaEnum.PONDERADA);
+            disciplinaExistente.setStatus(StatusDisciplinaEnum.APROVADO);
+            Avaliacao a1 = criarAvaliacao(10.0, 9.0, true);
+            Avaliacao a2 = criarAvaliacao(0.0, 1.0, true);
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
+                    .thenReturn(Optional.of(disciplinaExistente));
+            when(avaliacaoRepository.findByDisciplinaIdDisciplina(idDisciplina)).thenReturn(List.of(a1, a2));
+            when(disciplinaRepository.save(any(Disciplina.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            disciplinaService.atualizarDisciplina(idDisciplina, criarDtoValido(TipoMediaEnum.SIMPLES), idUsuarioLogado);
+
+            // ponderada: média 9.0 (aprovado); simples: média 5.0 (reprovado)
+            assertThat(disciplinaExistente.getStatus()).isEqualTo(StatusDisciplinaEnum.REPROVADO);
         }
 
         @Test

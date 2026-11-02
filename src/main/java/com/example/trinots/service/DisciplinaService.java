@@ -2,11 +2,10 @@ package com.example.trinots.service;
 
 import com.example.trinots.domain.Avaliacao;
 import com.example.trinots.domain.Disciplina;
-import com.example.trinots.domain.Tarefa;
 import com.example.trinots.domain.Usuario;
 import com.example.trinots.domain.enums.StatusDisciplinaEnum;
+import com.example.trinots.domain.enums.TipoMediaEnum;
 import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoMediaResponseDTO;
-import com.example.trinots.dto.AvaliacaoDTO.AvaliacaoResponseDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaRequestDTO;
 import com.example.trinots.dto.DisciplinaDTO.DisciplinaResponseDTO;
 import com.example.trinots.dto.HorarioDTO.HorarioEmbutidoDTO;
@@ -106,23 +105,14 @@ public class DisciplinaService {
     public DisciplinaResponseDTO atualizarDisciplina(UUID id, DisciplinaRequestDTO dto, UUID idUsuarioLogado) {
         Disciplina disciplina = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
-        if (disciplina.getArquivada()) {
-            throw new DisciplinaArquivadaException("Não é possível editar uma disciplina arquivada");
-        }
-
         if (disciplinaRepository.existsByNomeDisciplinaAndUsuarioIdUsuarioAndIdDisciplinaNot(dto.nomeDisciplina(), idUsuarioLogado, id)) {
             throw new DisciplinaJaCadastradaException("Você já tem uma disciplina chamada '" + dto.nomeDisciplina() + "'");
         }
 
-        boolean temAvaliacoes = !avaliacaoRepository.findByDisciplinaIdDisciplina(id).isEmpty();
+        List<Avaliacao> avaliacoes = avaliacaoRepository.findByDisciplinaIdDisciplina(id);
 
-        boolean tentandoAlterarTipoMedia = dto.tipoMedia() != null
+        boolean mudouTipoMedia = dto.tipoMedia() != null
                 && !Objects.equals(disciplina.getTipoMedia(), dto.tipoMedia());
-
-        if (temAvaliacoes && tentandoAlterarTipoMedia) {
-            throw new TipoMediaImutavelException(
-                    "Não é possível alterar o tipo de média: a disciplina já possui avaliações cadastradas");
-        }
 
         disciplina.setNomeDisciplina(dto.nomeDisciplina());
         disciplina.setPeriodo(dto.periodo());
@@ -131,8 +121,18 @@ public class DisciplinaService {
         disciplina.setAndar(dto.andar());
         disciplina.setCor(dto.cor());
 
-        if (dto.tipoMedia() != null && !temAvaliacoes) {
+        if (mudouTipoMedia) {
             disciplina.setTipoMedia(dto.tipoMedia());
+
+            if (!avaliacoes.isEmpty()) {
+                if (dto.tipoMedia() == TipoMediaEnum.SIMPLES) {
+                    avaliacoes.forEach(a -> a.setPeso(1.0));
+                    avaliacaoRepository.saveAll(avaliacoes);
+                }
+                if (!Boolean.TRUE.equals(disciplina.getArquivada())) {
+                    disciplina.setStatus(definirStatus(disciplina, calcularResultado(disciplina, avaliacoes)));
+                }
+            }
         }
 
         Disciplina atualizada = disciplinaRepository.save(disciplina);

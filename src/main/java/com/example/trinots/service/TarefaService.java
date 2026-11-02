@@ -93,17 +93,11 @@ public class TarefaService {
     public TarefaResponseDTO atualizarTarefa(UUID id, TarefaRequestDTO dto, UUID idUsuarioLogado) {
         Tarefa tarefa = buscarEntidadeDoUsuario(id, idUsuarioLogado);
 
-        if (tarefa.getDisciplina().getArquivada()) {
-            throw new DisciplinaArquivadaException("Não é possível editar tarefa de uma disciplina arquivada");
-        }
-
-        if (tarefa.getConcluida()) {
-            throw new TarefaJaConcluidaException("Não é possível editar uma tarefa já concluída");
-        }
-
         Disciplina disciplinaDestino = buscarDisciplinaDoUsuario(dto.idDisciplina(), idUsuarioLogado);
 
-        if (disciplinaDestino.getArquivada()) {
+        boolean mudouDeDisciplina = !tarefa.getDisciplina().getIdDisciplina().equals(disciplinaDestino.getIdDisciplina());
+
+        if (mudouDeDisciplina && Boolean.TRUE.equals(disciplinaDestino.getArquivada())) {
             throw new DisciplinaArquivadaException("Não é possível mover tarefa para uma disciplina arquivada");
         }
 

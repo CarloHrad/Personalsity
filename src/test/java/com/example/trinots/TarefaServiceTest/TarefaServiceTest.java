@@ -247,39 +247,63 @@ class TarefaServiceTest {
             assertThat(resultado.nomeTarefa()).isEqualTo("Lista 2");
         }
 
-        /*@Test
-        @DisplayName("deve lançar TarefaJaConcluidaException ao tentar editar tarefa já concluída")
-        void deveLancarExceptionQuandoJaConcluida() {
+        @Test
+        @DisplayName("tarefa já concluída pode ser editada e continua concluída")
+        void devePermitirEditarConcluida() {
             tarefaExistente.setConcluida(true);
-            TarefaRequestDTO dto = criarDtoValido();
+            TarefaRequestDTO dto = new TarefaRequestDTO("Lista 1 revisada", null,
+                    LocalDate.now().plusDays(3), null, idDisciplina);
 
             when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
                     .thenReturn(Optional.of(tarefaExistente));
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
+            when(tarefaRepository.save(any(Tarefa.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            assertThatThrownBy(() -> tarefaService.atualizarTarefa(idTarefa, dto, idUsuarioLogado))
-                    .isInstanceOf(TarefaJaConcluidaException.class);
+            TarefaResponseDTO resultado = tarefaService.atualizarTarefa(idTarefa, dto, idUsuarioLogado);
 
-            verify(tarefaRepository, never()).save(any());
+            assertThat(resultado.nomeTarefa()).isEqualTo("Lista 1 revisada");
+            assertThat(tarefaExistente.getConcluida()).isTrue();
         }
 
         @Test
-        @DisplayName("deve lançar DisciplinaArquivadaException ao tentar editar tarefa de disciplina arquivada")
-        void deveLancarExceptionQuandoDisciplinaArquivada() {
+        @DisplayName("tarefa de disciplina arquivada pode ser editada sem sair da disciplina")
+        void devePermitirEditarEmDisciplinaArquivada() {
             disciplinaExistente.setArquivada(true);
-            TarefaRequestDTO dto = criarDtoValido();
+            TarefaRequestDTO dto = new TarefaRequestDTO("Lista 1 revisada", null,
+                    LocalDate.now().plusDays(3), null, idDisciplina);
 
             when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
                     .thenReturn(Optional.of(tarefaExistente));
             when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idDisciplina, idUsuarioLogado))
                     .thenReturn(Optional.of(disciplinaExistente));
+            when(tarefaRepository.save(any(Tarefa.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            TarefaResponseDTO resultado = tarefaService.atualizarTarefa(idTarefa, dto, idUsuarioLogado);
+
+            assertThat(resultado.nomeTarefa()).isEqualTo("Lista 1 revisada");
+        }
+
+        @Test
+        @DisplayName("não deve mover tarefa para outra disciplina arquivada")
+        void naoDeveMoverParaDisciplinaArquivada() {
+            Disciplina arquivada = new Disciplina();
+            UUID idArquivada = UUID.randomUUID();
+            arquivada.setIdDisciplina(idArquivada);
+            arquivada.setArquivada(true);
+            TarefaRequestDTO dto = new TarefaRequestDTO("Lista 1", null,
+                    LocalDate.now().plusDays(3), null, idArquivada);
+
+            when(tarefaRepository.findByIdTarefaAndDisciplinaUsuarioIdUsuario(idTarefa, idUsuarioLogado))
+                    .thenReturn(Optional.of(tarefaExistente));
+            when(disciplinaRepository.findByIdDisciplinaAndUsuarioIdUsuario(idArquivada, idUsuarioLogado))
+                    .thenReturn(Optional.of(arquivada));
 
             assertThatThrownBy(() -> tarefaService.atualizarTarefa(idTarefa, dto, idUsuarioLogado))
                     .isInstanceOf(DisciplinaArquivadaException.class);
 
             verify(tarefaRepository, never()).save(any());
-        }*/
+        }
 
         @Test
         @DisplayName("não deve permitir atualizar tarefa de outro usuário (IDOR)")

@@ -88,10 +88,6 @@ public class AvaliacaoService {
         Avaliacao avaliacao = buscarEntidadeDoUsuario(id, idUsuarioLogado);
         Disciplina disciplina = avaliacao.getDisciplina();
 
-        if (disciplina.getArquivada()) {
-            throw new DisciplinaArquivadaException("Não é possível editar avaliação de uma disciplina arquivada");
-        }
-
         if (!disciplina.getIdDisciplina().equals(dto.idDisciplina())) {
             throw new DisciplinaImutavelException("Não é possível mover uma avaliação para outra disciplina. Exclua e crie novamente na disciplina correta.");
         }
@@ -141,18 +137,26 @@ public class AvaliacaoService {
             throw new DisciplinaArquivadaException("Não é possível concluir avaliação de uma disciplina arquivada");
         }
 
-        if (avaliacao.getConcluida()) {
+        Double nota = dto == null ? null : dto.notaObtida();
+
+        if (Boolean.TRUE.equals(avaliacao.getConcluida()) && avaliacao.getNotaObtida() != null) {
             throw new AvaliacaoJaConcluidaException("Avaliação já está concluída");
         }
 
-        if (dto.notaObtida() > avaliacao.getNotaMaxima()) {
+        if (nota != null && nota > avaliacao.getNotaMaxima()) {
             throw new NotaInvalidaException(
                     "Nota obtida não pode ser maior que a nota máxima (" + avaliacao.getNotaMaxima() + ")");
         }
 
-        avaliacao.setNotaObtida(dto.notaObtida());
-        avaliacao.setConcluida(true);
-        avaliacao.setDataConclusao(fusoHorarioService.agora());
+        if (Boolean.TRUE.equals(avaliacao.getConcluida()) && nota == null) {
+            return toResponseDTO(avaliacao);
+        }
+
+        avaliacao.setNotaObtida(nota);
+        if (!Boolean.TRUE.equals(avaliacao.getConcluida())) {
+            avaliacao.setConcluida(true);
+            avaliacao.setDataConclusao(fusoHorarioService.agora());
+        }
 
         Avaliacao atualizada = avaliacaoRepository.save(avaliacao);
 
@@ -220,9 +224,10 @@ public class AvaliacaoService {
                 avaliacao.getPeso(),
                 avaliacao.getConcluida(),
                 avaliacao.getDisciplina().getNomeDisciplina(),
-                !Boolean.TRUE.equals(avaliacao.getConcluida())
-                        && avaliacao.getDataAvaliacao() != null
-                        && avaliacao.getDataAvaliacao().isBefore(fusoHorarioService.hoje())
+                avaliacao.getNotaObtida() == null
+                        && (Boolean.TRUE.equals(avaliacao.getConcluida())
+                        || (avaliacao.getDataAvaliacao() != null
+                        && avaliacao.getDataAvaliacao().isBefore(fusoHorarioService.hoje())))
         );
     }
 }

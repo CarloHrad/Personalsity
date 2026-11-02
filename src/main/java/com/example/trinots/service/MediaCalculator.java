@@ -4,18 +4,6 @@ import com.example.trinots.domain.enums.TipoMediaEnum;
 
 import java.util.List;
 
-/**
- * Regras de cálculo de média, sem dependência de Spring/JPA para facilitar o teste.
- *
- * <ul>
- *   <li>Toda nota é normalizada para a escala 0–10: {@code nota / notaMaxima * 10}
- *       (ex.: 35 de 50 vira 7.0).</li>
- *   <li>A média atual considera apenas avaliações concluídas; avaliações pendentes ficam fora.</li>
- *   <li>O zero para avaliações pendentes só aparece na projeção pessimista.</li>
- *   <li>Risco de reprovação: a nota necessária nas avaliações restantes (escala 0–10)
- *       é maior que a nota máxima possível (10).</li>
- * </ul>
- */
 public final class MediaCalculator {
 
     public static final double ESCALA_MAXIMA = 10.0;
@@ -24,18 +12,9 @@ public final class MediaCalculator {
     private MediaCalculator() {
     }
 
-    /** Dados mínimos de uma avaliação para o cálculo. */
     public record Item(Double notaObtida, Double notaMaxima, Double peso, boolean concluida) {
     }
 
-    /**
-     * @param mediaAtual              média das concluídas (0–10); null se não há concluídas ou tipo indefinido
-     * @param projecaoPessimista      média considerando as pendentes como 0; null se não há avaliações ou tipo indefinido
-     * @param notaNecessariaRestantes média (0–10) que as pendentes precisam atingir para alcançar a média de
-     *                                aprovação; null se não há pendentes
-     * @param emRiscoReprovacao       true se a nota necessária for maior que 10 (aprovação inalcançável)
-     * @param todasConcluidas         true se há avaliações e nenhuma está pendente
-     */
     public record Resultado(Double mediaAtual,
                             Double projecaoPessimista,
                             Double notaNecessariaRestantes,
@@ -66,7 +45,8 @@ public final class MediaCalculator {
         for (Item item : itens) {
             double peso = peso(tipo, item);
             somaPesosTotal += peso;
-            if (item.concluida()) {
+            // Concluída sem nota ("aguardando nota") não entra na média: conta como pendente.
+            if (item.concluida() && item.notaObtida() != null) {
                 concluidas++;
                 somaPesosConcluidas += peso;
                 somaPonderadaConcluidas += notaNormalizada(item) * peso;

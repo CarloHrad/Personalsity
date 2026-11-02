@@ -58,7 +58,7 @@ public class AvaliacaoController {
 
     @PatchMapping("/{id}/concluir")
     public ResponseEntity<AvaliacaoResponseDTO> concluir(@PathVariable UUID id,
-                                                         @Valid @RequestBody AvaliacaoConcluirDTO dto,
+                                                         @Valid @RequestBody(required = false) AvaliacaoConcluirDTO dto,
                                                          @AuthenticationPrincipal Usuario usuarioLogado) {
         return ResponseEntity.ok(avaliacaoService.concluirAvaliacao(id, dto, usuarioLogado.getIdUsuario()));
     }

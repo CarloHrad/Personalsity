@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpMethod;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Map;
@@ -238,12 +237,22 @@ class TarefaApiTest extends ApiTestBase {
     }
 
     @Test
-    void tarefaConcluidaNaoPodeSerEditada() throws Exception {
+    void tarefaConcluidaPodeSerEditada() throws Exception {
         Sessao s = novaSessao();
         String disc = criarDisciplina(s, "Cálculo I");
         String id = criarTarefa(s, disc);
         patch("/tarefas/" + id + "/concluir", null, s).andExpect(status().isOk());
-        put("/tarefas/" + id, Json.escrever(tarefaPadrao(disc)), s).andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("460"));
+        put("/tarefas/" + id, Json.escrever(tarefaPadrao(disc)), s).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
+    }
+
+    @Test
+    void tarefaDeDisciplinaArquivadaPodeSerEditada() throws Exception {
+        Sessao s = novaSessao();
+        String disc = criarDisciplina(s, "Cálculo I");
+        String id = criarTarefa(s, disc);
+        patch("/disciplinas/" + disc + "/arquivar", null, s).andExpect(status().isNoContent());
+        put("/tarefas/" + id, Json.escrever(tarefaPadrao(disc)), s).andExpect(status().isOk());
     }
 
     @Test

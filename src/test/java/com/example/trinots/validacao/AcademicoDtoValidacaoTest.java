@@ -601,7 +601,7 @@ class AcademicoDtoValidacaoTest extends ValidacaoSuporte {
 
         @Test
         void notaNula() {
-            assertInvalido(new AvaliacaoConcluirDTO(null), "notaObtida", "obrigat");
+            assertValido(new AvaliacaoConcluirDTO(null));
         }
 
         @Test

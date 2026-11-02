@@ -1,6 +1,5 @@
 package com.example.trinots.api;
 
-import com.example.trinots.domain.enums.TipoMediaEnum;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -280,12 +279,14 @@ class DisciplinaApiTest extends ApiTestBase {
     }
 
     @Test
-    void tipoDeMediaNaoMudaDepoisDeHaverAvaliacoes() throws Exception {
+    void tipoDeMediaPodeMudarMesmoComAvaliacoes() throws Exception {
         Sessao s = novaSessao();
         String id = criarDisciplina(s, "Cálculo I");
         criarAvaliacao(s, id);
         put("/disciplinas/" + id, Json.escrever(Json.com(disciplinaPadrao("Cálculo I"), "tipoMedia", "PONDERADA")), s)
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("471"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tipoMedia").value("PONDERADA"));
+        put("/disciplinas/" + id, Json.escrever(Json.com(disciplinaPadrao("Cálculo I"), "tipoMedia", "SIMPLES")), s)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tipoMedia").value("SIMPLES"));
     }
 
     @Test
@@ -308,11 +309,12 @@ class DisciplinaApiTest extends ApiTestBase {
     }
 
     @Test
-    void disciplinaArquivadaEhSomenteLeitura() throws Exception {
+    void disciplinaArquivadaPodeSerEditadaMasNaoRecebeNovosItens() throws Exception {
         Sessao s = novaSessao();
         String id = criarDisciplina(s, "Cálculo I");
         patch("/disciplinas/" + id + "/arquivar", null, s).andExpect(status().isNoContent());
-        put("/disciplinas/" + id, Json.escrever(disciplinaPadrao("Cálculo I")), s).andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("410"));
+        put("/disciplinas/" + id, Json.escrever(disciplinaPadrao("Cálculo Renomeado")), s).andExpect(status().isOk())
+                .andExpect(jsonPath("$.nomeDisciplina").value("Cálculo Renomeado")).andExpect(jsonPath("$.arquivada").value(true));
         post("/tarefas", Json.escrever(tarefaPadrao(id)), s).andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("410"));
         post("/avaliacoes", Json.escrever(avaliacaoPadrao(id)), s).andExpect(status().isBadRequest()).andExpect(jsonPath("$.codigo").value("410"));
         post("/horarios", Json.escrever(Json.mapa("diaSemana", "SEGUNDA", "horaInicio", "08:00:00", "horaFim", "10:00:00", "idDisciplina", id)), s)

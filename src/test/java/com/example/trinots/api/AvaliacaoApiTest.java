@@ -204,7 +204,7 @@ class AvaliacaoApiTest extends ApiTestBase {
     }
 
     @ParameterizedTest(name = "concluir com corpo invalido [{0}]")
-    @ValueSource(strings = {"{}", "{\"notaObtida\":null}", "{\"notaObtida\":-1}", "{\"notaObtida\":\"dez\"}", "{\"notaObtida\":[]}", "[]", "{\"notaObtida\":{}}"})
+    @ValueSource(strings = {"{\"notaObtida\":-1}", "{\"notaObtida\":\"dez\"}", "{\"notaObtida\":[]}", "[]", "{\"notaObtida\":{}}"})
     void concluirComCorpoInvalido(String corpo) throws Exception {
         Sessao s = novaSessao();
         String id = criarAvaliacao(s, criarDisciplina(s, "Cálculo I"));
@@ -213,10 +213,24 @@ class AvaliacaoApiTest extends ApiTestBase {
     }
 
     @Test
-    void concluirSemCorpo() throws Exception {
+    void concluirSemNotaFicaAguardandoNota() throws Exception {
         Sessao s = novaSessao();
         String id = criarAvaliacao(s, criarDisciplina(s, "Cálculo I"));
-        patch("/avaliacoes/" + id + "/concluir", null, s).andExpect(status().isBadRequest());
+        patch("/avaliacoes/" + id + "/concluir", null, s).andExpect(status().isOk())
+                .andExpect(jsonPath("$.concluida").value(true)).andExpect(jsonPath("$.aguardandoNota").value(true))
+                .andExpect(jsonPath("$.notaObtida").doesNotExist());
+        patch("/avaliacoes/" + id + "/concluir", Json.obj("notaObtida", 8.0), s).andExpect(status().isOk())
+                .andExpect(jsonPath("$.notaObtida").value(8.0)).andExpect(jsonPath("$.aguardandoNota").value(false));
+        patch("/avaliacoes/" + id + "/concluir", Json.obj("notaObtida", 9.0), s).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("474"));
+    }
+
+    @Test
+    void concluirComCorpoVazioTambemConcluiSemNota() throws Exception {
+        Sessao s = novaSessao();
+        String id = criarAvaliacao(s, criarDisciplina(s, "Cálculo I"));
+        patch("/avaliacoes/" + id + "/concluir", "{}", s).andExpect(status().isOk())
+                .andExpect(jsonPath("$.concluida").value(true)).andExpect(jsonPath("$.notaObtida").doesNotExist());
     }
 
     @Test

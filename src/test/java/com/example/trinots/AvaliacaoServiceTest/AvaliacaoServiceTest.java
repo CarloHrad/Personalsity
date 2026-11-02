@@ -160,6 +160,19 @@ class AvaliacaoServiceTest {
         }
 
         @Test
+        @DisplayName("concluída sem nota está aguardando nota, mesmo com data futura")
+        void concluidaSemNotaAguardaNota() {
+            avaliacao.setDataAvaliacao(AGORA.toLocalDate().plusDays(5));
+            avaliacaoDoUsuario();
+            salvarRetornaArgumento();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.concluirAvaliacao(idAvaliacao, new AvaliacaoConcluirDTO(null), idUsuario);
+
+            assertThat(resultado.concluida()).isTrue();
+            assertThat(resultado.aguardandoNota()).isTrue();
+        }
+
+        @Test
         @DisplayName("concluída, mesmo com data passada, não está aguardando nota")
         void concluidaNaoAguardaNota() {
             disciplinaDoUsuario();
@@ -265,6 +278,62 @@ class AvaliacaoServiceTest {
             assertThat(resultado.notaObtida()).isEqualTo(7.5);
             assertThat(resultado.dataConclusao()).isEqualTo(AGORA);
             verify(disciplinaService).atualizarStatusDisciplina(idDisciplina, idUsuario);
+        }
+
+        @Test
+        @DisplayName("conclui sem nota (DTO com nota nula): fica concluída e aguardando nota")
+        void concluiSemNota() {
+            avaliacaoDoUsuario();
+            salvarRetornaArgumento();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.concluirAvaliacao(idAvaliacao, new AvaliacaoConcluirDTO(null), idUsuario);
+
+            assertThat(resultado.concluida()).isTrue();
+            assertThat(resultado.notaObtida()).isNull();
+            assertThat(resultado.dataConclusao()).isEqualTo(AGORA);
+            assertThat(resultado.aguardandoNota()).isTrue();
+            verify(disciplinaService).atualizarStatusDisciplina(idDisciplina, idUsuario);
+        }
+
+        @Test
+        @DisplayName("conclui sem nota (sem corpo na requisição)")
+        void concluiSemCorpo() {
+            avaliacaoDoUsuario();
+            salvarRetornaArgumento();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.concluirAvaliacao(idAvaliacao, null, idUsuario);
+
+            assertThat(resultado.concluida()).isTrue();
+            assertThat(resultado.notaObtida()).isNull();
+        }
+
+        @Test
+        @DisplayName("concluída sem nota recebe a nota depois, sem mudar a data de conclusão")
+        void lancaNotaDepois() {
+            avaliacao.setConcluida(true);
+            avaliacao.setDataConclusao(AGORA.minusDays(2));
+            avaliacaoDoUsuario();
+            salvarRetornaArgumento();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.concluirAvaliacao(idAvaliacao, new AvaliacaoConcluirDTO(8.0), idUsuario);
+
+            assertThat(resultado.notaObtida()).isEqualTo(8.0);
+            assertThat(resultado.aguardandoNota()).isFalse();
+            assertThat(resultado.dataConclusao()).isEqualTo(AGORA.minusDays(2));
+            verify(disciplinaService).atualizarStatusDisciplina(idDisciplina, idUsuario);
+        }
+
+        @Test
+        @DisplayName("concluída sem nota e chamada de novo sem nota não altera nada")
+        void semNotaDeNovoNaoAltera() {
+            avaliacao.setConcluida(true);
+            avaliacao.setDataConclusao(AGORA.minusDays(2));
+            avaliacaoDoUsuario();
+
+            AvaliacaoResponseDTO resultado = avaliacaoService.concluirAvaliacao(idAvaliacao, new AvaliacaoConcluirDTO(null), idUsuario);
+
+            assertThat(resultado.aguardandoNota()).isTrue();
+            verify(avaliacaoRepository, never()).save(any());
         }
 
         @Test
@@ -430,13 +499,15 @@ class AvaliacaoServiceTest {
         }
 
         @Test
-        @DisplayName("disciplina arquivada não permite editar")
-        void disciplinaArquivada() {
+        @DisplayName("disciplina arquivada permite editar a avaliação")
+        void disciplinaArquivadaPermiteEditar() {
             disciplina.setArquivada(true);
             avaliacaoDoUsuario();
+            salvarRetornaArgumento();
 
-            assertThatThrownBy(() -> avaliacaoService.atualizarAvaliacao(idAvaliacao, dto("P1", null, 10.0, null), idUsuario))
-                    .isInstanceOf(DisciplinaArquivadaException.class);
+            AvaliacaoResponseDTO resultado = avaliacaoService.atualizarAvaliacao(idAvaliacao, dto("P1 revisada", null, 10.0, null), idUsuario);
+
+            assertThat(resultado.nomeAvaliacao()).isEqualTo("P1 revisada");
         }
     }
 

@@ -193,9 +193,14 @@ class SegurancaGeralApiTest extends ApiTestBase {
                 post("/disciplinas", corpo, s), put("/disciplinas/" + id, corpo, s), post("/horarios", corpo, s),
                 post("/tarefas", corpo, s), post("/avaliacoes", corpo, s), patch("/usuarios/senha", corpo, s),
                 put("/usuarios/me", corpo, s), put("/usuarios/curso", corpo, s), put("/usuarios/configuracoes/media", corpo, s),
-                patch("/avaliacoes/" + UUID_INEXISTENTE + "/concluir", corpo, s), delete("/usuarios/me", corpo, s)}) {
+                delete("/usuarios/me", corpo, s)}) {
             assertEquals(400, statusDe(r), safeBody(r));
         }
+        // /avaliacoes/{id}/concluir aceita corpo vazio ou "null" (concluir sem nota): aí chega ao service e a
+        // avaliação inexistente dá 404. Só o corpo malformado é 400.
+        boolean corpoVazioOuNulo = corpo.isEmpty() || corpo.equals("null");
+        assertEquals(corpoVazioOuNulo ? 404 : 400,
+                statusDe(patch("/avaliacoes/" + UUID_INEXISTENTE + "/concluir", corpo, s)));
     }
 
     @ParameterizedTest(name = "id invalido [{0}]")
