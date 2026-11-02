@@ -69,17 +69,17 @@ public class EmailService {
         String assunto;
         String texto;
         if (tipo == TipoCodigoEnum.VERIFICACAO_EMAIL) {
-            assunto = "Trinots - Confirme seu e-mail";
+            assunto = "YOUnity - Confirme seu e-mail";
             texto = "Olá, " + usuario.getNome() + "!\n\n"
                     + "Seu código para confirmar o e-mail é: " + codigo + "\n\n"
                     + "Ele vale por " + validadeMinutos + " minutos. "
-                    + "Se você não criou uma conta no Trinots, ignore esta mensagem.";
+                    + "Se você não criou uma conta na YOUnity, ignore esta mensagem.";
         } else {
-            assunto = "Trinots - Código para redefinir sua senha";
+            assunto = "YOUnity - Código para redefinir sua senha";
             texto = "Olá, " + usuario.getNome() + "!\n\n"
                     + "Seu código para redefinir a senha é: " + codigo + "\n\n"
                     + "Ele vale por " + validadeMinutos + " minutos. "
-                    + "Se você não pediu a redefinição, ignore esta mensagem.";
+                    + "Se você não pediu a redefinição da sua senha, ignore esta mensagem.";
         }
 
         if (!resendApiKey.isEmpty()) {
